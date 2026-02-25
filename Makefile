@@ -20,3 +20,7 @@ monitoring-restart:
 
 monitoring-clean:
 	docker compose -f examples/monitoring/docker-compose.yml down -v
+
+# Tests
+test:
+	go test ./... -count=1

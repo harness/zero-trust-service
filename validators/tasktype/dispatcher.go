@@ -38,6 +38,8 @@ func NewDispatcher(byTaskType map[string][]config.ValidatorDef, build func(confi
 			chains[taskType] = verifier.Chain(validators...)
 			total += len(validators)
 			log.Printf("registered %d validator(s) for task_type %q", len(validators), taskType)
+		} else {
+			log.Printf("no enabled validators for task_type %q, skipping", taskType)
 		}
 	}
 

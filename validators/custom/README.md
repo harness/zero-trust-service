@@ -18,8 +18,8 @@ Delegate → ZTS /api/verify
               └─ Custom validators
                    └─ webhook → POST to external service
                                     │
-                                    ├─ { "status": "authorized" }         → pass
-                                    └─ { "status": "unauthorized", ... }  → block
+                                    ├─ { "allowed": true }                   → pass
+                                    └─ { "allowed": false, "reason": "..." } → block
 ```
 
 ### Request (sent to external service)
@@ -69,7 +69,7 @@ ZTS POSTs the full `VerifyRequest` (which mirrors `DelegateTaskPackage`) as JSON
 { "allowed": false, "reason": "Shell scripts are blocked in org 'production' by policy" }
 ```
 
-The `error` field is optional but recommended — it is surfaced in the ZTS API response and audit logs so operators can understand why a task was blocked.
+The `reason` field is optional but recommended — it is surfaced in the ZTS API response and audit logs so operators can understand why a task was blocked.
 
 ### Configuration
 
@@ -98,7 +98,7 @@ custom:
 
 ### Behaviour
 
-- **Webhook responds with allowed status code** → parse JSON body, check `status` field
+- **Webhook responds with allowed status code** → parse JSON body, check `allowed` field
 - **Webhook responds with non-allowed status code** → block (or allow if `fail_open: true`)
 - **Webhook is unreachable / times out** → block (or allow if `fail_open: true`)
 
