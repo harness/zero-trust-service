@@ -1,0 +1,64 @@
+port: 4210
+
+# Audit — local file-based audit trail for all verify requests.
+# Stores lightweight metadata (JSONL) + full raw payload in separate files.
+# Cleanup runs hourly and deletes files older than max_age_days.
+audit:
+  enabled: true
+  dir: "/var/log/zts/audits"
+  max_age_days: 30                # auto-delete metadata + payload files older than this
+
+validators:
+  # Global validators — run for every request regardless of task type
+  global:
+    - type: require_account
+      enabled: true
+      config:
+        allowed_accounts:
+          - "kmpySmUISimoRrJL6NL73w"
+
+  # Task-type specific validators — plug and play
+  # Add new task types here without modifying ZTS code
+  by_task_type:
+    SHELL_SCRIPT_TASK_NG:
+      - type: command_blocklist
+        enabled: false
+        config:
+          patterns:
+            - "rm -rf /"
+            - "rm -rf /*"
+            - "mkfs."
+            - ":(){ :|:& };:"
+
+    INITIALIZATION_PHASE:
+      - type: image_allowlist
+        enabled: true
+        config:
+          allowed_prefixes:
+            - "harness/"
+            - "library/"
+
+    CI_EXECUTE_STEP:
+      - type: image_allowlist
+        enabled: true
+        config:
+          allowed_prefixes:
+            - "harness/"
+            - "library/"
+
+  # Custom validators — customer-provided, run for every request.
+  # Supports any registered type (e.g. webhook for external validation).
+  # Add as many as needed; they chain in order.
+  custom:
+    - type: webhook
+      enabled: false
+      config:
+        name: "org-policy-service"
+        url: "http://localhost:5050/zts/validate"
+        timeout: "5s"
+        fail_open: false
+        method: "POST"
+        allowed_status_codes: [200, 202]
+        headers:
+          Authorization: "Bearer my-secret-token"
+          X-Tenant-ID: "harness"

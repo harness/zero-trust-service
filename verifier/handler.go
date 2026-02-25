@@ -1,20 +1,19 @@
 package verifier
 
 import (
-	zts "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service"
-	"github.com/gotidy/ptr"
+	"context"
+
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
 )
 
-func ToHandler(verifier Interface) zts.VerifyHandler {
-	return func(request zts.VerifyRequest) (zts.VerifyResponse, error) {
-		if err := verifier.Handle(request); err != nil {
-			return zts.VerifyResponse{
-				Status: zts.VerifyStatusUnauthorized,
-				Error:  ptr.Of(err.Error()),
+func ToHandler(v Interface) types.VerifyHandler {
+	return func(ctx context.Context, request types.VerifyRequest) (types.VerifyResponse, error) {
+		if err := v.Handle(ctx, request); err != nil {
+			return types.VerifyResponse{
+				Allowed: false,
+				Reason:  err.Error(),
 			}, nil
 		}
-		return zts.VerifyResponse{
-			Status: zts.VerifyStatusAuthorized,
-		}, nil
+		return types.VerifyResponse{Allowed: true}, nil
 	}
 }

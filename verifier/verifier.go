@@ -1,17 +1,21 @@
 package verifier
 
-import zts "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service"
+import (
+	"context"
+
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
+)
 
 type Interface interface {
-	Handle(request zts.VerifyRequest) error
+	Handle(ctx context.Context, request types.VerifyRequest) error
 }
 
-type middlewareFunc func(request zts.VerifyRequest) error
+type middlewareFunc func(ctx context.Context, request types.VerifyRequest) error
 
-func (f middlewareFunc) Handle(request zts.VerifyRequest) error {
-	return f(request)
+func (f middlewareFunc) Handle(ctx context.Context, request types.VerifyRequest) error {
+	return f(ctx, request)
 }
 
-func From(f func(request zts.VerifyRequest) error) Interface {
+func From(f func(ctx context.Context, request types.VerifyRequest) error) Interface {
 	return middlewareFunc(f)
 }

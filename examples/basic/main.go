@@ -9,10 +9,12 @@ import (
 	"syscall"
 
 	zts "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service"
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
-	middleware "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 )
 
+// This example shows how to create a ZTS server with hardcoded validators.
+// For production use, see cmd/server/ which loads validators from config.yaml.
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -23,13 +25,12 @@ func main() {
 		zts.WithVerifyHandler(verifier.ToHandler(
 			verifier.Chain(
 				middlewareLogId(),
-				middleware.From(middlewareIdNotEmpty),
+				verifier.From(middlewareIdNotEmpty),
 				&middleWareIdIsEvenLength{},
 			),
 		)),
 	)
 
-	// Setup signal handling
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
@@ -39,7 +40,7 @@ func main() {
 		cancel()
 	}()
 
-	log.Printf("Server starting on :%d\n", port)
+	log.Printf("Example server starting on :%d\n", port)
 	if err := server.Run(ctx); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
@@ -48,27 +49,30 @@ func main() {
 }
 
 // middlewareIdNotEmpty is an example of a raw function that defines a middleware
-func middlewareIdNotEmpty(request zts.VerifyRequest) error {
-	if request.TaskID == "" {
+func middlewareIdNotEmpty(_ context.Context, request types.VerifyRequest) error {
+	if request.TaskPackage == nil || request.TaskPackage.TaskID == "" {
 		return fmt.Errorf("task_id is empty")
 	}
 	return nil
 }
 
 // middlewareLogId is an example of a function returning a middleware.
-func middlewareLogId() middleware.Interface {
-	return middleware.From(func(request zts.VerifyRequest) error {
-		log.Printf("received task_id: %q", request.TaskID)
+func middlewareLogId() verifier.Interface {
+	return verifier.From(func(_ context.Context, request types.VerifyRequest) error {
+		taskID := ""
+		if request.TaskPackage != nil {
+			taskID = request.TaskPackage.TaskID
+		}
+		log.Printf("received task_id: %q", taskID)
 		return nil
 	})
 }
 
-// middleWareIdIsEvenLength is an example of a struct that implements the middleware.Interface
-type middleWareIdIsEvenLength struct {
-}
+// middleWareIdIsEvenLength is an example of a struct that implements the verifier.Interface
+type middleWareIdIsEvenLength struct{}
 
-func (m *middleWareIdIsEvenLength) Handle(request zts.VerifyRequest) error {
-	if len(request.TaskID)%2 != 0 {
+func (m *middleWareIdIsEvenLength) Handle(_ context.Context, request types.VerifyRequest) error {
+	if request.TaskPackage == nil || len(request.TaskPackage.TaskID)%2 != 0 {
 		return fmt.Errorf("task_id is not even length")
 	}
 	return nil
