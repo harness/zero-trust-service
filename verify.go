@@ -20,12 +20,11 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	m := s.metrics
 
-	// Read the raw body so we can store it for audit and also decode it
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("[verify] failed to read request body: %v", err)
-		m.VerifyRequestsTotal.WithLabelValues(metrics.LabelStatusError, "").Inc()
-		m.VerifyRequestDuration.WithLabelValues(metrics.LabelStatusError).Observe(time.Since(start).Seconds())
+		m.VerifyRequestsTotal.Inc(metrics.LabelStatusError, "")
+		m.VerifyRequestDuration.Observe(time.Since(start).Seconds(), metrics.LabelStatusError)
 		http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -34,17 +33,16 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(rawBody, &request); err != nil {
 		log.Printf("[verify] failed to deserialize request: %v | size=%d payload=%s",
 			err, len(rawBody), truncate(rawBody, 512))
-		m.VerifyRequestsTotal.WithLabelValues(metrics.LabelStatusError, "").Inc()
-		m.VerifyRequestDuration.WithLabelValues(metrics.LabelStatusError).Observe(time.Since(start).Seconds())
+		m.VerifyRequestsTotal.Inc(metrics.LabelStatusError, "")
+		m.VerifyRequestDuration.Observe(time.Since(start).Seconds(), metrics.LabelStatusError)
 		http.Error(w, fmt.Sprintf("failed to deserialize request: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	// Create a tracker to collect validator names for audit, carried via context
 	tracker := verifier.NewTracker()
 	ctx := verifier.WithTracker(r.Context(), tracker)
+	ctx, _ = verifier.WithPipelineHolder(ctx)
 
-	// track missing metadata fields
 	recordMissingMetadata(request, m)
 
 	accountID := request.ResolveAccountID()
@@ -63,8 +61,8 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	if verifyErr != nil {
 		log.Printf("[verify] internal error task_id=%s account_id=%s duration=%s error=%v",
 			taskID, accountID, duration, verifyErr)
-		m.VerifyRequestsTotal.WithLabelValues(metrics.LabelStatusError, accountID).Inc()
-		m.VerifyRequestDuration.WithLabelValues(metrics.LabelStatusError).Observe(duration.Seconds())
+		m.VerifyRequestsTotal.Inc(metrics.LabelStatusError, accountID)
+		m.VerifyRequestDuration.Observe(duration.Seconds(), metrics.LabelStatusError)
 
 		s.writeAudit(start, end, request, tracker, false, verifyErr.Error(), json.RawMessage(rawBody))
 
@@ -81,12 +79,11 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[verify] authorized task_id=%s account_id=%s duration=%s",
 			taskID, accountID, duration)
 	}
-	m.VerifyRequestsTotal.WithLabelValues(status, accountID).Inc()
-	m.VerifyRequestDuration.WithLabelValues(status).Observe(duration.Seconds())
+	m.VerifyRequestsTotal.Inc(status, accountID)
+	m.VerifyRequestDuration.Observe(duration.Seconds(), status)
 
 	s.writeAudit(start, end, request, tracker, response.Allowed, response.Reason, json.RawMessage(rawBody))
 
-	// Attach timing metadata to the response
 	if response.Metadata == nil {
 		response.Metadata = make(map[string]interface{})
 	}
@@ -97,7 +94,6 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// writeAudit creates an audit record if the audit writer is configured.
 func (s *Server) writeAudit(
 	start time.Time,
 	end time.Time,
@@ -130,8 +126,8 @@ func (s *Server) writeAudit(
 
 	record := audit.Record{
 		ID:                 uuid.New().String(),
-		StartTs:            start.UTC().UnixMilli(),
-		EndTs:              end.UTC().UnixMilli(),
+		StartTime:          start.UTC(),
+		EndTime:            end.UTC(),
 		AccountID:          request.ResolveAccountID(),
 		TaskID:             taskID,
 		TaskType:           taskType,
@@ -140,28 +136,27 @@ func (s *Server) writeAudit(
 		Allowed:            allowed,
 		Reason:             reason,
 		FailedValidator:    failedValidator,
-		DurationMs:         end.Sub(start).Milliseconds(),
+		Duration:           end.Sub(start),
 		ValidatorsRun:      validatorsRun,
 	}
 
-	// Write asynchronously so it doesn't block the response
-	go s.auditWriter.Write(record, rawPayload)
+	go s.auditWriter.WriteEvent(audit.EventVerify, record, rawPayload)
 }
 
 func recordMissingMetadata(req types.VerifyRequest, m *metrics.Metrics) {
 	if req.TaskPackage == nil {
-		m.MissingMetadataTotal.WithLabelValues(metrics.LabelFieldZTSMetadata).Inc()
+		m.MissingMetadataTotal.Inc(metrics.LabelFieldZTSMetadata)
 		return
 	}
 	if req.TaskPackage.ZTSMetadata == nil {
-		m.MissingMetadataTotal.WithLabelValues(metrics.LabelFieldZTSMetadata).Inc()
+		m.MissingMetadataTotal.Inc(metrics.LabelFieldZTSMetadata)
 		return
 	}
 	if req.ResolveAccountID() == "" {
-		m.MissingMetadataTotal.WithLabelValues(metrics.LabelFieldAccountID).Inc()
+		m.MissingMetadataTotal.Inc(metrics.LabelFieldAccountID)
 	}
 	if req.ResolveTaskType() == "" {
-		m.MissingMetadataTotal.WithLabelValues(metrics.LabelFieldTaskType).Inc()
+		m.MissingMetadataTotal.Inc(metrics.LabelFieldTaskType)
 	}
 }
 
@@ -169,7 +164,6 @@ func DefaultVerifyHandler(_ context.Context, _ types.VerifyRequest) (types.Verif
 	return types.VerifyResponse{Allowed: true}, nil
 }
 
-// truncate returns the first n bytes of data as a string, appending "..." if truncated.
 func truncate(data []byte, n int) string {
 	if len(data) <= n {
 		return string(data)

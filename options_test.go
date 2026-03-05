@@ -6,44 +6,10 @@ import (
 
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
-// testMetricsForRoot creates a Metrics instance using a custom registry
-// to avoid duplicate registration panics across tests.
-func testMetricsForRoot() *metrics.Metrics {
-	reg := prometheus.NewRegistry()
-	m := &metrics.Metrics{
-		VerifyRequestsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "t_verify_requests_total",
-		}, []string{"status", "account_id"}),
-		VerifyRequestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name: "t_verify_request_duration_seconds",
-		}, []string{"status"}),
-		ValidatorEvaluationsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "t_validator_evaluations_total",
-		}, []string{"validator", "result"}),
-		ValidatorDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name: "t_validator_duration_seconds",
-		}, []string{"validator"}),
-		BlockedTasksTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "t_blocked_tasks_total",
-		}, []string{"account_id", "task_type", "validator"}),
-		MissingMetadataTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "t_missing_metadata_total",
-		}, []string{"field"}),
-		ValidatorsRegistered: prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "t_validators_registered",
-		}, []string{"scope"}),
-	}
-	reg.MustRegister(m.VerifyRequestsTotal, m.VerifyRequestDuration)
-	return m
-}
-
 func TestResolveOptions_Defaults(t *testing.T) {
-	m := testMetricsForRoot()
-	opts := resolveOptions(WithMetrics(m))
-
+	opts := resolveOptions()
 	if opts.Port != 8080 {
 		t.Errorf("expected default port 8080, got %d", opts.Port)
 	}
@@ -51,19 +17,21 @@ func TestResolveOptions_Defaults(t *testing.T) {
 		t.Fatal("expected default verify handler")
 	}
 	if opts.metrics == nil {
-		t.Fatal("expected metrics")
+		t.Fatal("expected noop metrics when none provided")
 	}
 	if opts.auditWriter != nil {
 		t.Error("expected nil audit writer by default")
 	}
-	if opts.auditHandler != nil {
-		t.Error("expected nil audit handler by default")
+	if opts.auditRoutes != nil {
+		t.Error("expected nil audit routes by default")
+	}
+	if opts.adminRoutes != nil {
+		t.Error("expected nil admin routes by default")
 	}
 }
 
 func TestWithPort(t *testing.T) {
-	m := testMetricsForRoot()
-	opts := resolveOptions(WithMetrics(m), WithPort(9090))
+	opts := resolveOptions(WithMetrics(metrics.NewNoop()), WithPort(9090))
 	if opts.Port != 9090 {
 		t.Errorf("expected port 9090, got %d", opts.Port)
 	}
@@ -85,8 +53,7 @@ func TestWithVerifyHandler(t *testing.T) {
 		return types.VerifyResponse{Allowed: true}, nil
 	}
 
-	m := testMetricsForRoot()
-	opts := resolveOptions(WithMetrics(m), WithVerifyHandler(handler))
+	opts := resolveOptions(WithMetrics(metrics.NewNoop()), WithVerifyHandler(handler))
 	opts.verifyHandler(context.Background(), types.VerifyRequest{})
 
 	if !called {
@@ -121,11 +88,20 @@ func TestWithAuditWriter_Panic(t *testing.T) {
 	WithAuditWriter(nil)
 }
 
-func TestWithAuditHandler_Panic(t *testing.T) {
+func TestWithAuditRoutes_Panic(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
-			t.Fatal("expected panic for nil audit handler")
+			t.Fatal("expected panic for nil audit route registrar")
 		}
 	}()
-	WithAuditHandler(nil)
+	WithAuditRoutes(nil)
+}
+
+func TestWithAdminRoutes_Panic(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for nil admin route registrar")
+		}
+	}()
+	WithAdminRoutes(nil)
 }

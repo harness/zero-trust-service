@@ -1,0 +1,28 @@
+# Template Mappings
+#
+# Route specific templates to non-default SCM providers/repos.
+# Key = template identifier (as used in templateRef)
+# Value = override config for that template
+#
+# Fields:
+#   provider  - SCM provider name (e.g. "github-main", "gitlab-main", "harness-code")
+#   repo      - Repository name (bare, owner is prepended from provider config)
+#   branch    - Branch override (defaults to provider's branch)
+#   version   - Version label override
+#   path      - Full custom path override (skips convention-based path building)
+#   scope     - Template scope: "account", "org", or "project" (default: "project")
+#
+# If a template is NOT listed here, it uses the default provider and
+# convention-based path: <base_path>/orgs/<org>/projects/<project>/templates/<id>/<version>.yaml
+
+# Example: route "runstp" template to harness-code provider
+# runstp:
+#   provider: harness-code
+#   repo: "my-templates-repo"
+
+# Example: route "runstpaccount" to gitlab with a fully custom path
+# runstpaccount:
+#   version: "v2"
+#   provider: gitlab-main
+#   repo: "gitlab-test"
+#   path: ".harness/thisiscustompath/v2.yaml"

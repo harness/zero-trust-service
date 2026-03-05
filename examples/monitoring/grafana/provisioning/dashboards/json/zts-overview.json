@@ -1,230 +1,91 @@
-{
-  "uid": "zts-overview",
-  "title": "ZTS — Zero Trust Service",
-  "tags": ["zts"],
-  "timezone": "browser",
-  "refresh": "5s",
-  "time": { "from": "now-15m", "to": "now" },
-  "panels": [
-    {
-      "title": "Validators Registered",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
-      "targets": [{ "expr": "sum(zts_validators_registered)", "legendFormat": "total" }],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": { "steps": [{ "color": "green", "value": null }] },
-          "color": { "mode": "thresholds" }
-        }
-      },
-      "options": { "graphMode": "none", "textMode": "value", "colorMode": "value" }
-    },
-    {
-      "title": "Global",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 3, "x": 4, "y": 0 },
-      "targets": [{ "expr": "zts_validators_registered{scope=\"global\"}", "legendFormat": "global" }],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": { "steps": [{ "color": "blue", "value": null }] },
-          "color": { "mode": "thresholds" }
-        }
-      },
-      "options": { "graphMode": "none", "textMode": "value", "colorMode": "value" }
-    },
-    {
-      "title": "Task-Type",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 3, "x": 7, "y": 0 },
-      "targets": [{ "expr": "zts_validators_registered{scope=\"task_type\"}", "legendFormat": "task_type" }],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": { "steps": [{ "color": "purple", "value": null }] },
-          "color": { "mode": "thresholds" }
-        }
-      },
-      "options": { "graphMode": "none", "textMode": "value", "colorMode": "value" }
-    },
-    {
-      "title": "Custom",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 3, "x": 10, "y": 0 },
-      "targets": [{ "expr": "sum(zts_validators_registered{scope=\"custom\"}) or vector(0)", "legendFormat": "custom" }],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": { "steps": [{ "color": "yellow", "value": null }] },
-          "color": { "mode": "thresholds" }
-        }
-      },
-      "options": { "graphMode": "none", "textMode": "value", "colorMode": "value" }
-    },
-    {
-      "title": "Total Requests",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 13, "y": 0 },
-      "targets": [{ "expr": "sum(zts_verify_requests_total)", "legendFormat": "total" }],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": { "steps": [{ "color": "green", "value": null }] },
-          "color": { "mode": "thresholds" }
-        }
-      },
-      "options": { "graphMode": "area", "textMode": "value_and_sparkline", "colorMode": "value" }
-    },
-    {
-      "title": "Blocked Tasks",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 17, "y": 0 },
-      "targets": [{ "expr": "sum(zts_blocked_tasks_total) or vector(0)", "legendFormat": "blocked" }],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1 }
-            ]
-          },
-          "color": { "mode": "thresholds" }
-        }
-      },
-      "options": { "graphMode": "area", "textMode": "value_and_sparkline", "colorMode": "value" }
-    },
-    {
-      "title": "Missing Metadata",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 3, "x": 21, "y": 0 },
-      "targets": [{ "expr": "sum(zts_missing_metadata_total) or vector(0)", "legendFormat": "missing" }],
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 1 }
-            ]
-          },
-          "color": { "mode": "thresholds" }
-        }
-      },
-      "options": { "graphMode": "area", "textMode": "value_and_sparkline", "colorMode": "value" }
-    },
-    {
-      "title": "Requests",
-      "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 },
-      "collapsed": false,
-      "panels": []
-    },
-    {
-      "title": "Verify Requests / sec (by status)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
-      "targets": [
-        { "expr": "sum by (status) (rate(zts_verify_requests_total[1m]))", "legendFormat": "{{status}}" }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "fillOpacity": 20, "lineWidth": 2, "spanNulls": true },
-          "unit": "reqps"
-        },
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "authorized" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "unauthorized" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "error" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
-        ]
-      }
-    },
-    {
-      "title": "Verify Request Duration (p50 / p95 / p99)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
-      "targets": [
-        { "expr": "histogram_quantile(0.50, sum by (le) (rate(zts_verify_request_duration_seconds_bucket[1m])))", "legendFormat": "p50" },
-        { "expr": "histogram_quantile(0.95, sum by (le) (rate(zts_verify_request_duration_seconds_bucket[1m])))", "legendFormat": "p95" },
-        { "expr": "histogram_quantile(0.99, sum by (le) (rate(zts_verify_request_duration_seconds_bucket[1m])))", "legendFormat": "p99" }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": true },
-          "unit": "s"
-        }
-      }
-    },
-    {
-      "title": "Validators",
-      "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
-      "collapsed": false,
-      "panels": []
-    },
-    {
-      "title": "Validator Evaluations / sec (by validator & result)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
-      "targets": [
-        { "expr": "sum by (validator, result) (rate(zts_validator_evaluations_total[1m]))", "legendFormat": "{{validator}} — {{result}}" }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "fillOpacity": 15, "lineWidth": 2, "spanNulls": true },
-          "unit": "ops"
-        }
-      }
-    },
-    {
-      "title": "Validator Duration (p95 by validator)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
-      "targets": [
-        { "expr": "histogram_quantile(0.95, sum by (le, validator) (rate(zts_validator_duration_seconds_bucket[1m])))", "legendFormat": "{{validator}} p95" }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "fillOpacity": 10, "lineWidth": 2, "spanNulls": true },
-          "unit": "s"
-        }
-      }
-    },
-    {
-      "title": "Security & Accounts",
-      "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
-      "collapsed": false,
-      "panels": []
-    },
-    {
-      "title": "Blocked Tasks (by account / task type / validator)",
-      "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
-      "targets": [
-        { "expr": "sum by (account_id, task_type, validator) (zts_blocked_tasks_total)", "legendFormat": "", "format": "table", "instant": true }
-      ],
-      "transformations": [
-        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "account_id": "Account", "task_type": "Task Type", "validator": "Validator", "Value": "Blocked Count" } } }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "align": "left" },
-          "thresholds": {
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1 }
-            ]
-          }
-        },
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "Blocked Count" }, "properties": [{ "id": "custom.cellOptions", "value": { "type": "color-background" } }, { "id": "color", "value": { "mode": "thresholds" } }] }
-        ]
-      }
-    },
-    {
-      "title": "Requests by Account",
-      "type": "piechart",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
-      "targets": [
-        { "expr": "sum by (account_id) (zts_verify_requests_total)", "legendFormat": "{{account_id}}", "instant": true }
-      ],
-      "options": { "legend": { "displayMode": "table", "placement": "right" }, "pieType": "donut" }
-    }
-  ],
-  "schemaVersion": 39
-}
+{"uid":"zts-overview","title":"ZTS — Zero Trust Service","tags":["zts"],"timezone":"browser","refresh":"5s",
+"time":{"from":"now-15m","to":"now"},"schemaVersion":39,"panels":[
+{"title":"Validators Registered","type":"stat","gridPos":{"h":4,"w":4,"x":0,"y":0},
+ "targets":[{"expr":"sum(zts_validators_registered)","legendFormat":"total"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"green","value":null}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"none","textMode":"value","colorMode":"value"}},
+{"title":"Global","type":"stat","gridPos":{"h":4,"w":3,"x":4,"y":0},
+ "targets":[{"expr":"zts_validators_registered{scope=\"global\"}","legendFormat":"global"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"blue","value":null}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"none","textMode":"value","colorMode":"value"}},
+{"title":"Task-Type","type":"stat","gridPos":{"h":4,"w":3,"x":7,"y":0},
+ "targets":[{"expr":"zts_validators_registered{scope=\"task_type\"}","legendFormat":"task_type"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"purple","value":null}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"none","textMode":"value","colorMode":"value"}},
+{"title":"Custom","type":"stat","gridPos":{"h":4,"w":3,"x":10,"y":0},
+ "targets":[{"expr":"sum(zts_validators_registered{scope=\"custom\"}) or vector(0)","legendFormat":"custom"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"yellow","value":null}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"none","textMode":"value","colorMode":"value"}},
+{"title":"Total Requests","type":"stat","gridPos":{"h":4,"w":4,"x":13,"y":0},
+ "targets":[{"expr":"sum(zts_verify_requests_total)","legendFormat":"total"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"green","value":null}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"area","textMode":"value_and_sparkline","colorMode":"value"}},
+{"title":"Blocked Tasks","type":"stat","gridPos":{"h":4,"w":4,"x":17,"y":0},
+ "targets":[{"expr":"sum(zts_blocked_tasks_total) or vector(0)","legendFormat":"blocked"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"green","value":null},{"color":"red","value":1}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"area","textMode":"value_and_sparkline","colorMode":"value"}},
+{"title":"Missing Metadata","type":"stat","gridPos":{"h":4,"w":3,"x":21,"y":0},
+ "targets":[{"expr":"sum(zts_missing_metadata_total) or vector(0)","legendFormat":"missing"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"green","value":null},{"color":"orange","value":1}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"area","textMode":"value_and_sparkline","colorMode":"value"}},
+
+{"title":"Requests","type":"row","gridPos":{"h":1,"w":24,"x":0,"y":4},"collapsed":false,"panels":[]},
+{"title":"Verify Rate / sec","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":5},
+ "targets":[{"expr":"sum by (status) (rate(zts_verify_requests_total[1m]))","legendFormat":"{{status}}"}],
+ "fieldConfig":{"defaults":{"custom":{"fillOpacity":20,"lineWidth":2,"spanNulls":true},"unit":"reqps"},
+  "overrides":[
+   {"matcher":{"id":"byName","options":"authorized"},"properties":[{"id":"color","value":{"fixedColor":"green","mode":"fixed"}}]},
+   {"matcher":{"id":"byName","options":"unauthorized"},"properties":[{"id":"color","value":{"fixedColor":"red","mode":"fixed"}}]},
+   {"matcher":{"id":"byName","options":"error"},"properties":[{"id":"color","value":{"fixedColor":"orange","mode":"fixed"}}]}]}},
+{"title":"Verify Duration (p50/p95/p99)","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":5},
+ "targets":[
+  {"expr":"histogram_quantile(0.50, sum by (le) (rate(zts_verify_request_duration_seconds_bucket[1m])))","legendFormat":"p50"},
+  {"expr":"histogram_quantile(0.95, sum by (le) (rate(zts_verify_request_duration_seconds_bucket[1m])))","legendFormat":"p95"},
+  {"expr":"histogram_quantile(0.99, sum by (le) (rate(zts_verify_request_duration_seconds_bucket[1m])))","legendFormat":"p99"}],
+ "fieldConfig":{"defaults":{"custom":{"fillOpacity":10,"lineWidth":2,"spanNulls":true},"unit":"s"}}},
+
+{"title":"Validators","type":"row","gridPos":{"h":1,"w":24,"x":0,"y":13},"collapsed":false,"panels":[]},
+{"title":"Validator Evals / sec","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":14},
+ "targets":[{"expr":"sum by (validator, result) (rate(zts_validator_evaluations_total[1m]))","legendFormat":"{{validator}} — {{result}}"}],
+ "fieldConfig":{"defaults":{"custom":{"fillOpacity":15,"lineWidth":2,"spanNulls":true},"unit":"ops"}}},
+{"title":"Validator Duration (p95)","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":14},
+ "targets":[{"expr":"histogram_quantile(0.95, sum by (le, validator) (rate(zts_validator_duration_seconds_bucket[1m])))","legendFormat":"{{validator}} p95"}],
+ "fieldConfig":{"defaults":{"custom":{"fillOpacity":10,"lineWidth":2,"spanNulls":true},"unit":"s"}}},
+
+{"title":"Pipeline Resolver","type":"row","gridPos":{"h":1,"w":24,"x":0,"y":22},"collapsed":false,"panels":[]},
+{"title":"Resolver Total","type":"stat","gridPos":{"h":4,"w":6,"x":0,"y":23},
+ "targets":[{"expr":"sum(zts_resolver_total) or vector(0)","legendFormat":"total"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"green","value":null}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"area","textMode":"value_and_sparkline","colorMode":"value"}},
+{"title":"Resolver Success","type":"stat","gridPos":{"h":4,"w":6,"x":6,"y":23},
+ "targets":[{"expr":"sum(zts_resolver_total{status=\"success\"}) or vector(0)","legendFormat":"success"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"green","value":null}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"area","textMode":"value_and_sparkline","colorMode":"value"}},
+{"title":"Resolver Errors","type":"stat","gridPos":{"h":4,"w":6,"x":12,"y":23},
+ "targets":[{"expr":"sum(zts_resolver_total{status=\"error\"}) or vector(0)","legendFormat":"errors"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"green","value":null},{"color":"red","value":1}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"area","textMode":"value_and_sparkline","colorMode":"value"}},
+{"title":"Resolver Inline","type":"stat","gridPos":{"h":4,"w":6,"x":18,"y":23},
+ "targets":[{"expr":"sum(zts_resolver_total{status=\"inline\"}) or vector(0)","legendFormat":"inline"}],
+ "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"yellow","value":null}]},"color":{"mode":"thresholds"}}},
+ "options":{"graphMode":"area","textMode":"value_and_sparkline","colorMode":"value"}},
+{"title":"Resolver Rate / sec","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":27},
+ "targets":[{"expr":"sum by (status) (rate(zts_resolver_total[1m]))","legendFormat":"{{status}}"}],
+ "fieldConfig":{"defaults":{"custom":{"fillOpacity":20,"lineWidth":2,"spanNulls":true},"unit":"ops"}}},
+{"title":"Resolver Duration (p50/p95/p99)","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":27},
+ "targets":[
+  {"expr":"histogram_quantile(0.50, sum by (le) (rate(zts_resolver_duration_seconds_bucket[1m])))","legendFormat":"p50"},
+  {"expr":"histogram_quantile(0.95, sum by (le) (rate(zts_resolver_duration_seconds_bucket[1m])))","legendFormat":"p95"},
+  {"expr":"histogram_quantile(0.99, sum by (le) (rate(zts_resolver_duration_seconds_bucket[1m])))","legendFormat":"p99"}],
+ "fieldConfig":{"defaults":{"custom":{"fillOpacity":10,"lineWidth":2,"spanNulls":true},"unit":"s"}}},
+
+{"title":"Security & Accounts","type":"row","gridPos":{"h":1,"w":24,"x":0,"y":35},"collapsed":false,"panels":[]},
+{"title":"Blocked Tasks","type":"table","gridPos":{"h":8,"w":12,"x":0,"y":36},
+ "targets":[{"expr":"sum by (account_id, task_type, validator) (zts_blocked_tasks_total)","format":"table","instant":true}],
+ "transformations":[{"id":"organize","options":{"excludeByName":{"Time":true},"renameByName":{"account_id":"Account","task_type":"Task Type","validator":"Validator","Value":"Count"}}}],
+ "fieldConfig":{"defaults":{"custom":{"align":"left"},"thresholds":{"steps":[{"color":"green","value":null},{"color":"red","value":1}]}},
+  "overrides":[{"matcher":{"id":"byName","options":"Count"},"properties":[{"id":"custom.cellOptions","value":{"type":"color-background"}},{"id":"color","value":{"mode":"thresholds"}}]}]}},
+{"title":"Requests by Account","type":"piechart","gridPos":{"h":8,"w":12,"x":12,"y":36},
+ "targets":[{"expr":"sum by (account_id) (zts_verify_requests_total)","legendFormat":"{{account_id}}","instant":true}],
+ "options":{"legend":{"displayMode":"table","placement":"right"},"pieType":"donut"}}
+]}

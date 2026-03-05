@@ -1,0 +1,16 @@
+FROM golang:1.24-alpine AS builder
+RUN apk add --no-cache ca-certificates git
+WORKDIR /src
+ENV GOPRIVATE=git0.harness.io/*
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/zero-trust-service ./examples/zts
+
+FROM --platform=linux/amd64 alpine:3.21
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /out/zero-trust-service /bin/zero-trust-service
+COPY examples/zts/config.yaml /app/config.yaml
+EXPOSE 4210 8898
+ENTRYPOINT ["/bin/zero-trust-service"]
+CMD ["-config", "/app/config.yaml"]

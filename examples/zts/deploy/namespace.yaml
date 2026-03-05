@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zero-trust-service
+  labels:
+    app.kubernetes.io/name: zero-trust-service
+    app.kubernetes.io/part-of: harness

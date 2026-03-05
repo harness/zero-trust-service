@@ -2,8 +2,8 @@ package metrics
 
 import "testing"
 
-func TestNew_AllMetricsInitialized(t *testing.T) {
-	m := New()
+func TestNewNoop_AllFieldsPopulated(t *testing.T) {
+	m := NewNoop()
 
 	if m.VerifyRequestsTotal == nil {
 		t.Error("VerifyRequestsTotal is nil")
@@ -26,43 +26,42 @@ func TestNew_AllMetricsInitialized(t *testing.T) {
 	if m.ValidatorsRegistered == nil {
 		t.Error("ValidatorsRegistered is nil")
 	}
+	if m.ResolverDuration == nil {
+		t.Error("ResolverDuration is nil")
+	}
+	if m.ResolverTotal == nil {
+		t.Error("ResolverTotal is nil")
+	}
+	if m.OutputRequestsTotal == nil {
+		t.Error("OutputRequestsTotal is nil")
+	}
 }
 
-func TestMetricConstants(t *testing.T) {
-	// Ensure metric names follow the zts_ prefix convention
-	names := []string{
-		VerifyRequestsTotalName,
-		VerifyRequestDurationName,
-		ValidatorEvaluationsTotalName,
-		ValidatorDurationName,
-		BlockedTasksTotalName,
-		MissingMetadataTotalName,
-		ValidatorsRegisteredName,
-	}
-
-	for _, name := range names {
-		if len(name) < 4 || name[:4] != "zts_" {
-			t.Errorf("metric name %q should start with 'zts_'", name)
-		}
-	}
+func TestNewNoop_OperationsDoNotPanic(t *testing.T) {
+	m := NewNoop()
+	m.VerifyRequestsTotal.Inc("status", "account")
+	m.VerifyRequestDuration.Observe(0.5, "status")
+	m.ValidatorEvaluationsTotal.Inc("v", "pass")
+	m.ValidatorDuration.Observe(0.1, "v")
+	m.BlockedTasksTotal.Inc("acc", "type", "v")
+	m.MissingMetadataTotal.Inc("field")
+	m.ValidatorsRegistered.Set(3, "global")
+	m.ResolverDuration.Observe(1.0, "success")
+	m.ResolverTotal.Inc("success")
+	m.OutputRequestsTotal.Inc("success", "acc")
 }
 
 func TestLabelConstants(t *testing.T) {
-	// Ensure label constants are non-empty
 	labels := []string{
-		LabelStatusError,
-		LabelResultPass,
-		LabelResultFail,
-		LabelScopeGlobal,
-		LabelScopeTaskType,
-		LabelScopeCustom,
-		LabelFieldZTSMetadata,
-		LabelFieldAccountID,
-		LabelFieldTaskType,
+		LabelStatusAuthorized, LabelStatusUnauthorized,
+		LabelStatusSuccess, LabelStatusError,
+		LabelResultPass, LabelResultFail,
+		LabelScopeGlobal, LabelScopeTaskType, LabelScopeCustom,
+		LabelFieldZTSMetadata, LabelFieldAccountID, LabelFieldTaskType,
+		LabelResolverSuccess, LabelResolverError, LabelResolverSkipped, LabelResolverInline,
 	}
-
-	for _, label := range labels {
-		if label == "" {
+	for _, l := range labels {
+		if l == "" {
 			t.Error("found empty label constant")
 		}
 	}

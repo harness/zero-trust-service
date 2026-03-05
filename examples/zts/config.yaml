@@ -1,0 +1,88 @@
+port: ${ZTS_SERVER_PORT:-4210}
+admin_port: ${ZTS_ADMIN_PORT:-8898}
+
+audit:
+  enabled: ${ZTS_AUDIT_ENABLED:-true}
+  dir: "${ZTS_AUDIT_DIR:-/var/log/zts/audits}"
+  max_age_days: ${ZTS_AUDIT_MAX_AGE_DAYS:-30}
+
+validators:
+  global:
+    - type: require_account
+      enabled: ${ZTS_REQUIRE_ACCOUNT_ENABLED:-true}
+      config:
+        allowed_accounts: ${ZTS_ALLOWED_ACCOUNTS:-["kmpySmUISimoRrJL6NL73w"]}
+    - type: step_lookup
+      enabled: ${ZTS_STEP_LOOKUP_ENABLED:-false}
+      config:
+        log_found: ${ZTS_STEP_LOOKUP_LOG_FOUND:-true}
+        log_missing: ${ZTS_STEP_LOOKUP_LOG_MISSING:-true}
+
+  by_task_type:
+    SHELL_SCRIPT_TASK_NG:
+      - type: shellscript
+        enabled: ${ZTS_SHELLSCRIPT_ENABLED:-false}
+        config:
+          bash: ${ZTS_SHELLSCRIPT_ALLOWED_COMMANDS:-["echo"]}
+
+    INITIALIZATION_PHASE:
+      - type: image_allowlist
+        enabled: ${ZTS_IMAGE_ALLOWLIST_ENABLED:-true}
+        config:
+          allowed_prefixes: ${ZTS_IMAGE_ALLOWED_PREFIXES:-["harness/", "library/"]}
+
+    CI_EXECUTE_STEP:
+      - type: image_allowlist
+        enabled: ${ZTS_IMAGE_ALLOWLIST_ENABLED:-true}
+        config:
+          allowed_prefixes: ${ZTS_IMAGE_ALLOWED_PREFIXES:-["harness/", "library/"]}
+
+    CONTAINER_INITIALIZATION:
+      - type: image_allowlist
+        enabled: ${ZTS_IMAGE_ALLOWLIST_ENABLED:-true}
+        config:
+          allowed_prefixes: ${ZTS_IMAGE_ALLOWED_PREFIXES:-["harness/", "library/"]}
+
+  custom:
+    - type: webhook
+      enabled: ${ZTS_WEBHOOK_ENABLED:-false}
+      config:
+        name: "${ZTS_WEBHOOK_NAME:-policy-service}"
+        url: "${ZTS_WEBHOOK_URL:-http://localhost:5050/zts/validate}"
+        timeout: "${ZTS_WEBHOOK_TIMEOUT:-5s}"
+        fail_open: ${ZTS_WEBHOOK_FAIL_OPEN:-false}
+        method: "POST"
+        allowed_status_codes: [200, 202]
+
+resolver:
+  enabled: ${ZTS_RESOLVER_ENABLED:-false}
+  output_dir: "${ZTS_RESOLVER_OUTPUT_DIR}"
+  scm:
+    providers:
+      github-main:
+        driver: github
+        url: "${ZTS_GITHUB_URL:-https://api.github.com}"
+        token: "${GITHUB_TOKEN}"
+        owner: "${ZTS_GITHUB_OWNER}"
+        repo: "${ZTS_GITHUB_REPO}"
+        branch: "${ZTS_GITHUB_BRANCH:-main}"
+        base_path: "${ZTS_GITHUB_BASE_PATH:-.harness}"
+      gitlab-main:
+        driver: gitlab
+        url: "${ZTS_GITLAB_URL:-https://gitlab.com}"
+        token: "${GITLAB_TOKEN}"
+        owner: "${ZTS_GITLAB_OWNER}"
+        repo: "${ZTS_GITLAB_REPO}"
+        branch: "${ZTS_GITLAB_BRANCH:-main}"
+        base_path: "${ZTS_GITLAB_BASE_PATH:-.harness}"
+      harness-code:
+        driver: harness
+        url: "${ZTS_HARNESS_URL:-https://app.harness.io/gateway/code}"
+        token: "${HARNESS_CODE_TOKEN}"
+        owner: "${ZTS_HARNESS_OWNER}"
+        repo: "${ZTS_HARNESS_REPO}"
+        branch: "${ZTS_HARNESS_BRANCH:-main}"
+        base_path: "${ZTS_HARNESS_BASE_PATH:-.harness}"
+  templates:
+    default_provider: "${ZTS_DEFAULT_PROVIDER:-github-main}"
+    template_mappings_file: "${ZTS_TEMPLATE_MAPPINGS_FILE:-mappings.yaml}"

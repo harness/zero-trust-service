@@ -3,12 +3,11 @@ package validators
 import (
 	"testing"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/config"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 )
 
 func TestBuild_KnownType(t *testing.T) {
-	def := config.ValidatorDef{
+	def := ValidatorDef{
 		Type: "require_account",
 		Config: map[string]any{
 			"allowed_accounts": []any{"acc1"},
@@ -24,7 +23,7 @@ func TestBuild_KnownType(t *testing.T) {
 }
 
 func TestBuild_UnknownType(t *testing.T) {
-	def := config.ValidatorDef{Type: "nonexistent_validator"}
+	def := ValidatorDef{Type: "nonexistent_validator"}
 	_, err := Build(def)
 	if err == nil {
 		t.Fatal("expected error for unknown type")
@@ -45,7 +44,7 @@ func TestRegister_CustomFactory(t *testing.T) {
 }
 
 func TestInit_RegistersOOTBValidators(t *testing.T) {
-	expected := []string{"require_account", "command_blocklist", "image_allowlist", "webhook"}
+	expected := []string{"require_account", "shellscript", "image_allowlist", "webhook"}
 	for _, name := range expected {
 		if _, ok := registry[name]; !ok {
 			t.Errorf("expected %q in registry", name)

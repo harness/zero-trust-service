@@ -1,0 +1,80 @@
+# Zero Trust Service Deployment
+# Edit the image tag below when deploying a new version.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zero-trust-service
+  namespace: zero-trust-service
+  labels:
+    app.kubernetes.io/name: zero-trust-service
+    app.kubernetes.io/part-of: harness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zero-trust-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zero-trust-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8898"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: zero-trust-service
+          image: zero-trust-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4210
+              protocol: TCP
+            - name: admin
+              containerPort: 8898
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: zero-trust-service-values
+                optional: true
+            - secretRef:
+                name: zero-trust-service-secrets
+                optional: true
+          env:
+            - name: ZTS_AUDIT_DIR
+              value: "/data/audits"
+            - name: ZTS_TEMPLATE_MAPPINGS_FILE
+              value: "/app/mappings.yaml"
+          volumeMounts:
+            - name: mappings
+              mountPath: /app/mappings.yaml
+              subPath: mappings.yaml
+              readOnly: true
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: admin
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: admin
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: mappings
+          configMap:
+            name: zero-trust-service-mappings
+            optional: true
+        - name: data
+          emptyDir: {}

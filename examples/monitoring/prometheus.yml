@@ -4,4 +4,4 @@ global:
 scrape_configs:
   - job_name: 'zts'
     static_configs:
-      - targets: ['host.docker.internal:4210']
+      - targets: ['host.docker.internal:8898']

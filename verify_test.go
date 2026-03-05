@@ -9,13 +9,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
 )
 
 func TestHandleVerify_Authorized(t *testing.T) {
-	m := testMetricsForRoot()
 	s := NewServer(
-		WithMetrics(m),
+		WithMetrics(metrics.NewNoop()),
 		WithVerifyHandler(func(_ context.Context, _ types.VerifyRequest) (types.VerifyResponse, error) {
 			return types.VerifyResponse{Allowed: true}, nil
 		}),
@@ -46,15 +46,11 @@ func TestHandleVerify_Authorized(t *testing.T) {
 }
 
 func TestHandleVerify_Unauthorized(t *testing.T) {
-	m := testMetricsForRoot()
 	reason := "blocked by policy"
 	s := NewServer(
-		WithMetrics(m),
+		WithMetrics(metrics.NewNoop()),
 		WithVerifyHandler(func(_ context.Context, _ types.VerifyRequest) (types.VerifyResponse, error) {
-			return types.VerifyResponse{
-				Allowed: false,
-				Reason:  reason,
-			}, nil
+			return types.VerifyResponse{Allowed: false, Reason: reason}, nil
 		}),
 	)
 
@@ -82,9 +78,8 @@ func TestHandleVerify_Unauthorized(t *testing.T) {
 }
 
 func TestHandleVerify_HandlerError(t *testing.T) {
-	m := testMetricsForRoot()
 	s := NewServer(
-		WithMetrics(m),
+		WithMetrics(metrics.NewNoop()),
 		WithVerifyHandler(func(_ context.Context, _ types.VerifyRequest) (types.VerifyResponse, error) {
 			return types.VerifyResponse{}, errors.New("internal failure")
 		}),
@@ -105,8 +100,7 @@ func TestHandleVerify_HandlerError(t *testing.T) {
 }
 
 func TestHandleVerify_InvalidJSON(t *testing.T) {
-	m := testMetricsForRoot()
-	s := NewServer(WithMetrics(m))
+	s := NewServer(WithMetrics(metrics.NewNoop()))
 
 	req := httptest.NewRequest("POST", "/api/verify", bytes.NewReader([]byte("not json")))
 	req.Header.Set("Content-Type", "application/json")
@@ -120,8 +114,7 @@ func TestHandleVerify_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleVerify_EmptyBody(t *testing.T) {
-	m := testMetricsForRoot()
-	s := NewServer(WithMetrics(m))
+	s := NewServer(WithMetrics(metrics.NewNoop()))
 
 	req := httptest.NewRequest("POST", "/api/verify", bytes.NewReader([]byte("{}")))
 	req.Header.Set("Content-Type", "application/json")
@@ -129,7 +122,6 @@ func TestHandleVerify_EmptyBody(t *testing.T) {
 
 	s.httpServer.Handler.ServeHTTP(w, req)
 
-	// Default handler authorizes everything
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
@@ -146,13 +138,13 @@ func TestDefaultVerifyHandler(t *testing.T) {
 }
 
 func TestRecordMissingMetadata_NilTaskPackage(t *testing.T) {
-	m := testMetricsForRoot()
+	m := metrics.NewNoop()
 	req := types.VerifyRequest{}
 	recordMissingMetadata(req, m)
 }
 
 func TestRecordMissingMetadata_NilZTSMetadata(t *testing.T) {
-	m := testMetricsForRoot()
+	m := metrics.NewNoop()
 	req := types.VerifyRequest{
 		TaskPackage: &types.DelegateTaskPackage{},
 	}
@@ -160,7 +152,7 @@ func TestRecordMissingMetadata_NilZTSMetadata(t *testing.T) {
 }
 
 func TestRecordMissingMetadata_MissingAccountID(t *testing.T) {
-	m := testMetricsForRoot()
+	m := metrics.NewNoop()
 	req := types.VerifyRequest{
 		TaskPackage: &types.DelegateTaskPackage{
 			ZTSMetadata: &types.ZTSMetadata{},
@@ -170,7 +162,7 @@ func TestRecordMissingMetadata_MissingAccountID(t *testing.T) {
 }
 
 func TestRecordMissingMetadata_MissingTaskType(t *testing.T) {
-	m := testMetricsForRoot()
+	m := metrics.NewNoop()
 	req := types.VerifyRequest{
 		TaskPackage: &types.DelegateTaskPackage{
 			ZTSMetadata: &types.ZTSMetadata{AccountID: "acc1"},

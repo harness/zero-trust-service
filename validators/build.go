@@ -5,16 +5,13 @@ import (
 	"fmt"
 	"log"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/config"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/validators/tasktype"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 )
 
-// buildValidators builds a list of instrumented validators from a slice of
-// ValidatorDefs, skipping disabled ones. scope is used only for logging.
-func buildValidators(defs []config.ValidatorDef, scope string, m *metrics.Metrics) ([]verifier.Interface, int, error) {
+func buildValidators(defs []ValidatorDef, scope string, m *metrics.Metrics) ([]verifier.Interface, int, error) {
 	var out []verifier.Interface
 	count := 0
 	for i, def := range defs {
@@ -33,49 +30,43 @@ func buildValidators(defs []config.ValidatorDef, scope string, m *metrics.Metric
 	return out, count, nil
 }
 
-// BuildFromConfig wires up the full verifier chain from config.
-// Execution order: global → task-type dispatcher → custom.
-func BuildFromConfig(cfg config.ValidatorsConfig, m *metrics.Metrics) (verifier.Interface, error) {
+// BuildFromConfig wires up the full verifier chain: global → task-type → custom.
+func BuildFromConfig(cfg ValidatorsConfig, m *metrics.Metrics) (verifier.Interface, error) {
 	var all []verifier.Interface
 
-	// Global validators
 	global, globalCount, err := buildValidators(cfg.Global, "global", m)
 	if err != nil {
 		return nil, err
 	}
 	all = append(all, global...)
 
-	// Task-type dispatcher
 	taskTypeCount := 0
 	if len(cfg.ByTaskType) > 0 {
-		buildFn := func(def config.ValidatorDef) (verifier.Interface, error) {
-			v, err := Build(def)
+		chains := make(map[string]verifier.Interface, len(cfg.ByTaskType))
+		for tt, defs := range cfg.ByTaskType {
+			built, count, err := buildValidators(defs, fmt.Sprintf("task_type[%s]", tt), m)
 			if err != nil {
 				return nil, err
 			}
-			return verifier.Instrumented(def.Type, v, m), nil
+			if count > 0 {
+				chains[tt] = verifier.Chain(built...)
+				taskTypeCount += count
+			}
 		}
-		dispatcher, count, err := tasktype.NewDispatcher(cfg.ByTaskType, buildFn)
-		if err != nil {
-			return nil, err
-		}
-		taskTypeCount = count
-		if count > 0 {
-			all = append(all, dispatcher)
+		if len(chains) > 0 {
+			all = append(all, tasktype.NewDispatcher(chains))
 		}
 	}
 
-	// Custom validators
 	custom, customCount, err := buildValidators(cfg.Custom, "custom", m)
 	if err != nil {
 		return nil, err
 	}
 	all = append(all, custom...)
 
-	// Set registered validator gauges
-	m.ValidatorsRegistered.WithLabelValues(metrics.LabelScopeGlobal).Set(float64(globalCount))
-	m.ValidatorsRegistered.WithLabelValues(metrics.LabelScopeTaskType).Set(float64(taskTypeCount))
-	m.ValidatorsRegistered.WithLabelValues(metrics.LabelScopeCustom).Set(float64(customCount))
+	m.ValidatorsRegistered.Set(float64(globalCount), metrics.LabelScopeGlobal)
+	m.ValidatorsRegistered.Set(float64(taskTypeCount), metrics.LabelScopeTaskType)
+	m.ValidatorsRegistered.Set(float64(customCount), metrics.LabelScopeCustom)
 
 	if len(all) == 0 {
 		return verifier.From(func(_ context.Context, _ types.VerifyRequest) error { return nil }), nil

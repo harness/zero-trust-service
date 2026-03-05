@@ -5,7 +5,7 @@ run-example-webhook-server:
 	go run examples/webhook_server/main.go
 
 run-example-zts:
-	go run examples/zts/main.go -config config.yaml
+	go run examples/zts/main.go -config examples/zts/config.yaml
 
 # Monitoring — Prometheus + Grafana stack
 monitoring-up:

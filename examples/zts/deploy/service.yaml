@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zero-trust-service
+  namespace: zero-trust-service
+  labels:
+    app.kubernetes.io/name: zero-trust-service
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: zero-trust-service
+  ports:
+    - name: http
+      port: 4210
+      targetPort: http
+      protocol: TCP

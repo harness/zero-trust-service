@@ -3,9 +3,9 @@ package validators
 import (
 	"fmt"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/config"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/validators/account"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/validators/custom"
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/validators/pipeline"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/validators/tasktype"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 )
@@ -18,8 +18,11 @@ var registry = map[string]Factory{}
 func init() {
 	// Harness OOTB validators — each maps config "type" → constructor
 	Register("require_account", account.Allowlist)
-	Register("command_blocklist", tasktype.CommandBlocklist)
+	Register("shellscript", tasktype.ShellScript)
 	Register("image_allowlist", tasktype.ImageAllowlist)
+
+	// Pipeline-aware validators (use resolved pipeline from context)
+	Register("step_lookup", pipeline.StepLookup)
 
 	// Customer-facing validators
 	Register("webhook", custom.Webhook)
@@ -32,7 +35,7 @@ func Register(name string, factory Factory) {
 }
 
 // Build creates a single verifier from a ValidatorDef.
-func Build(def config.ValidatorDef) (verifier.Interface, error) {
+func Build(def ValidatorDef) (verifier.Interface, error) {
 	factory, ok := registry[def.Type]
 	if !ok {
 		return nil, fmt.Errorf("unknown validator type: %q", def.Type)

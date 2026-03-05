@@ -1,6 +1,6 @@
 # Custom Validators
 
-Custom validators allow customers to extend ZTS with their own validation logic without modifying ZTS code. They are configured under the `custom` section in `config.yaml` and run **after** global and task-type validators.
+Custom validators allow you to extend ZTS with your own validation logic without modifying ZTS library code. They run **after** global and task-type validators.
 
 ---
 
@@ -14,7 +14,7 @@ The webhook validator calls an external HTTP endpoint (customer-hosted policy se
 Delegate → ZTS /api/verify
               │
               ├─ Global validators (require_account, ...)
-              ├─ Task-type validators (command_blocklist, image_allowlist, ...)
+              ├─ Task-type validators (shellscript, image_allowlist, ...)
               └─ Custom validators
                    └─ webhook → POST to external service
                                     │
@@ -73,18 +73,20 @@ The `reason` field is optional but recommended — it is surfaced in the ZTS API
 
 ### Configuration
 
+The webhook validator is registered as `"webhook"` in the validator registry. Pass the following config keys:
+
 ```yaml
-custom:
-  - type: webhook
-    enabled: true
-    config:
-      name: "org-policy-service"
-      url: "https://policy.example.com/zts/validate"
-      timeout: "5s"
-      headers:
-        Authorization: "Bearer <token>"
-      fail_open: false
-      allowed_status_codes: [200, 202]
+# Example config structure (adapt to your application's config format)
+type: webhook
+enabled: true
+config:
+  name: "org-policy-service"
+  url: "https://policy.example.com/zts/validate"
+  timeout: "5s"
+  headers:
+    Authorization: "Bearer <token>"
+  fail_open: false
+  allowed_status_codes: [200, 202]
 ```
 
 | Key | Type | Required | Default | Description |
@@ -107,43 +109,28 @@ custom:
 You can chain multiple webhook validators. They execute in order and short-circuit on the first failure:
 
 ```yaml
-custom:
-  - type: webhook
-    enabled: true
-    config:
-      name: "security-team"
-      url: "https://security.example.com/zts/validate"
-      fail_open: false
+- type: webhook
+  enabled: true
+  config:
+    name: "security-team"
+    url: "https://security.example.com/zts/validate"
+    fail_open: false
 
-  - type: webhook
-    enabled: true
-    config:
-      name: "compliance-audit"
-      url: "https://compliance.example.com/zts/audit"
-      fail_open: true    # audit-only, don't block on failure
+- type: webhook
+  enabled: true
+  config:
+    name: "compliance-audit"
+    url: "https://compliance.example.com/zts/audit"
+    fail_open: true    # audit-only, don't block on failure
 ```
 
 ### Example Webhook Server
 
-An example webhook server is provided at `examples/webhook_server/main.go`. It demonstrates how to implement a custom policy endpoint — it blocks shell script tasks from the `production` org.
+An example webhook server is provided at [`examples/webhook_server/`](../../examples/webhook_server/). It demonstrates how to implement a custom policy endpoint.
 
 ```bash
+# From the repo root
 make run-example-webhook-server
-# Runs on http://localhost:5050
-```
-
-Sample `config.yaml` to use with the example webhook server:
-
-```yaml
-validators:
-  custom:
-    - type: webhook
-      enabled: true
-      config:
-        name: "org-policy-service"
-        url: "http://localhost:5050/zts/validate"
-        timeout: "5s"
-        fail_open: false
 ```
 
 ---
@@ -158,13 +145,12 @@ To add a new custom validator type (beyond webhook):
    ```go
    Register("my_validator", custom.MyValidator)
    ```
-4. Add it to `config.yaml` under `custom`:
+4. Add a config entry for it in your application's configuration:
    ```yaml
-   custom:
-     - type: my_validator
-       enabled: true
-       config:
-         key: "value"
+   - type: my_validator
+     enabled: true
+     config:
+       key: "value"
    ```
 
-No changes to ZTS core code are needed — just the registry entry and config.
+No changes to ZTS library code are needed — just the registry entry and config.
