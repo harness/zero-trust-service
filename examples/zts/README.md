@@ -21,7 +21,7 @@ The API server starts on `:4210` (configurable via `ZTS_SERVER_PORT`) and the ad
 
 ## Configuration
 
-All settings live in [`config.yaml`](config.yaml) with `${VAR:-default}` environment variable interpolation.
+All settings live in [`config.yaml`](./config.yaml) with `${VAR:-default}` environment variable interpolation.
 
 ### Environment Variables
 
@@ -89,7 +89,7 @@ ZTS_REGISTRY=us.gcr.io/my-project ZTS_TAG=v1.0 make docker-build-push
 
 ## Kubernetes Deployment
 
-Manifests are in [`deploy/`](deploy/):
+Manifests are in [`deploy/`](./deploy/):
 
 ```
 deploy/
@@ -104,6 +104,10 @@ deploy/
 ### Quick deploy
 
 ```bash
+# Apply all manifests at once (after filling in secrets.yaml)
+kubectl apply -f deploy/
+
+# Or apply individually for more control:
 kubectl apply -f deploy/namespace.yaml
 kubectl apply -f deploy/secrets.yaml    # ← fill in tokens first
 kubectl apply -f deploy/values.yaml
@@ -125,7 +129,7 @@ Point the Harness Delegate at ZTS by setting:
 
 ## Template Mappings
 
-The [`mappings.yaml`](mappings.yaml) file routes specific templates to different SCM providers/repos. See [`resolver/README.md`](../../resolver/README.md) for the full mapping spec.
+The [`mappings.yaml`](./mappings.yaml) file routes specific templates to different SCM providers/repos. See [`resolver/README.md`](../../resolver/README.md) for the full mapping spec.
 
 ## Monitoring
 

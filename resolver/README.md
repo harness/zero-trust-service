@@ -90,6 +90,6 @@ See [`examples/zts/`](../examples/zts/) for a complete wiring example.
 
 ## Adding a New SCM Provider
 
-1. Add a case in [`scm/factory.go`](scm/factory.go) for the `go-scm` driver
+1. Add a case in [`scm/factory.go`](./scm/factory.go) for the `go-scm` driver
 2. Add provider credentials to your application's config under the SCM providers section
 3. Map template identifiers → providers in your template mappings file

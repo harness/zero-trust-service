@@ -53,4 +53,4 @@ Factories have the signature `func(cfg map[string]any) (verifier.Interface, erro
      config: {}
    ```
 
-See [`custom/README.md`](custom/README.md) for the webhook validator spec.
+See [`custom/README.md`](./custom/README.md) for the webhook validator spec.

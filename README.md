@@ -28,7 +28,7 @@ curl -s -X POST http://localhost:4210/api/verify \
   -d '{"taskPackage":{"delegateTaskId":"t1","accountId":"myAcct","data":{"taskType":"SHELL_SCRIPT_TASK_NG"}}}'
 ```
 
-For the full production-ready example (Docker, K8s, config, env vars), see [`examples/zts/`](examples/zts/).
+For the full production-ready example (Docker, K8s, config, env vars), see [`examples/zts/`](./examples/zts/).
 
 ## Core Components
 
@@ -44,21 +44,21 @@ Validators run in order: **global → task-type → custom**. First failure bloc
 | `image_allowlist` | Task-type | Allow only approved container image prefixes |
 | `webhook` | Custom | Forward task to an external policy endpoint |
 
-Custom webhook validators let you add arbitrary policy logic without modifying ZTS — see [`validators/custom/README.md`](validators/custom/README.md).
+Custom webhook validators let you add arbitrary policy logic without modifying ZTS — see [`validators/custom/README.md`](./validators/custom/README.md).
 
 ### Pipeline Resolver
 
 When enabled, ZTS recursively resolves template references (Pipeline → Stage → Step) using go-scm. Supports GitHub, GitLab, Harness Code, and more. Resolved YAML is available for audit and for downstream validators like `step_lookup`.
 
-See [`resolver/README.md`](resolver/README.md) for details.
+See [`resolver/README.md`](./resolver/README.md) for details.
 
 ### Audit
 
-Pluggable audit logging. The library defines an `audit.Writer` interface; a file-based implementation is provided in `audit/file/`. See [`audit/README.md`](audit/README.md).
+Pluggable audit logging. The library defines an `audit.Writer` interface; a file-based implementation is provided in `audit/file/`. See [`audit/README.md`](./audit/README.md).
 
 ### Metrics
 
-Pluggable metrics. The library defines `Counter`, `Histogram`, and `Gauge` interfaces; a Prometheus implementation is provided in `metrics/prometheus/`. See [`metrics/README.md`](metrics/README.md).
+Pluggable metrics. The library defines `Counter`, `Histogram`, and `Gauge` interfaces; a Prometheus implementation is provided in `metrics/prometheus/`. See [`metrics/README.md`](./metrics/README.md).
 
 ## API
 
@@ -67,22 +67,22 @@ Pluggable metrics. The library defines `Counter`, `Histogram`, and `Gauge` inter
 | `/api/verify` | POST | Authorize a delegate task |
 | `/api/output` | POST | Receive task output from delegate |
 
-Admin endpoints (metrics, healthz, audit queries) are hosted separately by the application — see [`examples/zts/`](examples/zts/) for the reference setup.
+Admin endpoints (metrics, healthz, audit queries) are hosted separately by the application — see [`examples/zts/`](./examples/zts/) for the reference setup.
 
 ## Project Structure
 
 | Directory | README | Description |
 |-----------|--------|-------------|
-| [`verifier/`](verifier/) | [README](verifier/README.md) | Core `Interface`, chain, tracker, instrumentation |
-| [`validators/`](validators/) | [README](validators/README.md) | Built-in validators and registry |
-| [`validators/custom/`](validators/custom/) | [README](validators/custom/README.md) | Webhook validator spec and custom validator guide |
-| [`metrics/`](metrics/) | [README](metrics/README.md) | Metrics interfaces + Prometheus implementation |
-| [`resolver/`](resolver/) | [README](resolver/README.md) | Pipeline template resolver |
-| [`audit/`](audit/) | [README](audit/README.md) | Audit logging interface + file-based implementation |
-| [`examples/zts/`](examples/zts/) | [README](examples/zts/README.md) | Full production ZTS server (config, Docker, K8s) |
-| [`examples/basic/`](examples/basic/) | — | Minimal server with hardcoded validators |
-| [`examples/webhook_server/`](examples/webhook_server/) | — | Sample external policy webhook |
-| [`examples/monitoring/`](examples/monitoring/) | — | Local Prometheus + Grafana dashboard |
+| [`verifier/`](./verifier/) | [README](./verifier/README.md) | Core `Interface`, chain, tracker, instrumentation |
+| [`validators/`](./validators/) | [README](./validators/README.md) | Built-in validators and registry |
+| [`validators/custom/`](./validators/custom/) | [README](./validators/custom/README.md) | Webhook validator spec and custom validator guide |
+| [`metrics/`](./metrics/) | [README](./metrics/README.md) | Metrics interfaces + Prometheus implementation |
+| [`resolver/`](./resolver/) | [README](./resolver/README.md) | Pipeline template resolver |
+| [`audit/`](./audit/) | [README](./audit/README.md) | Audit logging interface + file-based implementation |
+| [`examples/zts/`](./examples/zts/) | [README](./examples/zts/README.md) | Full production ZTS server (config, Docker, K8s) |
+| [`examples/basic/`](./examples/basic/) | — | Minimal server with hardcoded validators |
+| [`examples/webhook_server/`](./examples/webhook_server/) | — | Sample external policy webhook |
+| [`examples/monitoring/`](./examples/monitoring/) | — | Local Prometheus + Grafana dashboard |
 
 ## Make Targets
 
