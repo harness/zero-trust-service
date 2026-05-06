@@ -1,24 +1,20 @@
 # audit
 
-Audit logging for ZTS requests and task outputs.
+The audit package provides a **persistence-agnostic interface for recording ZTS authorization events**. Every time the Delegate asks ZTS to verify a task (or sends task output back), an audit record can be written — capturing what was requested, what decision was made, which validators ran, and the full raw payload for forensic review.
 
-`audit.go` defines the core `Writer` interface and record types. The `file/` subpackage provides a file-based reference implementation. Any backend (database, object store, external service) can be used by implementing the `Writer` interface.
+The package itself only defines the `Writer` interface and the record types. Actual storage is handled by implementations in subpackages (see `audit/file/` for the provided file-based backend). You can swap in any backend — database, object store, external service — by implementing `Writer`.
 
-## Package Layout
+## Folder Structure
 
 ```
 audit/
-├── audit.go          # Writer interface, AuditRecord interface, Record, OutputRecord
-└── file/
-    ├── types.go      # Config, ListRequest, ListResponse
-    ├── writer.go     # Writer — appends metadata to .jsonl files, writes payload JSON
-    ├── reader.go     # Reader — scans metadata files, filters, paginates
-    └── handler.go    # HTTP handlers for querying audit records
+├── audit.go       Writer interface, AuditRecord interface, Record, OutputRecord
+└── file/          File-based audit implementation (see file/README.md)
 ```
 
-## Writer Interface
+## How to Use
 
-The `Writer` interface defines a single method:
+### The Writer Interface
 
 ```go
 type Writer interface {
@@ -26,48 +22,45 @@ type Writer interface {
 }
 ```
 
-It does not own lifecycle methods — the application manages the writer's lifecycle.
+- **`kind`** — the event type being recorded (`"verify"` or `"output"`).
+- **`record`** — structured metadata (implements `AuditRecord`).
+- **`rawPayload`** — the full JSON body of the original request, stored as-is for later inspection.
 
-## Event Kinds
+### Record Types
 
-| Constant | Description |
-|----------|-------------|
-| `EventVerify` (`"verify"`) | Delegate task authorization request |
-| `EventOutput` (`"output"`) | Delegate task output response |
+| Type | Event Kind | Fields |
+|------|-----------|--------|
+| `Record` | `"verify"` | Task ID, account, task type, allowed/denied, failed validator, duration, validators run |
+| `OutputRecord` | `"output"` | Task ID, account, task type name, response code |
 
-New event types can be added by defining a struct that implements `AuditRecord` and calling `writer.WriteEvent("kind", record, payload)`.
+Both implement `AuditRecord`, which provides:
 
-## `file/` Implementation
-
-The `file/` subpackage provides a file-based `Writer`, `Reader`, and HTTP `Handler`.
-
-### Storage Layout
-
-```
-<audit_dir>/
-  metadata/
-    <YYYY-MM-DD>/
-      verify.jsonl        # one JSON line per verify request
-      output.jsonl        # one JSON line per task output
-  payloads/
-    <YYYY-MM-DD>/
-      verify/
-        <uuid>.json       # full request payload
-      output/
-        <uuid>.json       # full output payload
+```go
+type AuditRecord interface {
+    AuditID() string    // unique identifier
+    AuditDate() string  // "YYYY-MM-DD" in UTC, used for date-partitioned storage
+}
 ```
 
-### Lifecycle
+### Implementing a Custom Backend
 
-`file.Writer` provides concrete lifecycle methods (not part of the `Writer` interface):
+To write audit records to your own storage:
 
-- `Start(ctx)` — starts a background goroutine for periodic cleanup of old audit files
-- `Close()` — flushes pending writes and releases resources
+```go
+type MyWriter struct { /* DB connection, client, etc. */ }
 
-The application is responsible for calling these.
+func (w *MyWriter) WriteEvent(kind string, record audit.AuditRecord, rawPayload json.RawMessage) {
+    // persist record and/or rawPayload to your backend
+}
+```
 
-### HTTP Handler
+Pass it to the ZTS server via `zts.WithAuditWriter(myWriter)`.
 
-`file.Handler` implements `RouteRegistrar` and registers routes for querying stored audits. The application decides where to mount these (e.g. on an admin router).
+The `Writer` interface intentionally has no lifecycle methods — the application manages the backend's connection lifecycle separately.
 
-See [`examples/zts/`](../examples/zts/) for a reference setup.
+### Adding a New Event Kind
+
+1. Define a struct that implements `AuditRecord`.
+2. Call `writer.WriteEvent("your_kind", record, payload)` from the relevant handler.
+
+The `file/` implementation handles new kinds automatically (creates a new `.jsonl` stream per kind).

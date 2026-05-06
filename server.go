@@ -17,7 +17,7 @@ import (
 type Server struct {
 	httpServer    *http.Server
 	verifyHandler types.VerifyHandler
-	metrics       *metrics.Metrics
+	metrics       metrics.Emitter
 	auditWriter   audit.Writer
 }
 

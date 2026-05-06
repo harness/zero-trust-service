@@ -1,19 +1,18 @@
-package tasktype
+package verifier
 
 import (
 	"context"
 
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 )
 
 // Dispatcher routes requests to the correct validators based on task_type.
 type Dispatcher struct {
-	chains map[string]verifier.Interface
+	chains map[string]Interface
 }
 
 // NewDispatcher creates a dispatcher from pre-built validator chains keyed by task type.
-func NewDispatcher(chains map[string]verifier.Interface) *Dispatcher {
+func NewDispatcher(chains map[string]Interface) *Dispatcher {
 	return &Dispatcher{chains: chains}
 }
 

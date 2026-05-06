@@ -7,7 +7,6 @@ import (
 	"regexp"
 
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/validators"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,7 +16,7 @@ var envVarPattern = regexp.MustCompile(`\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)
 type Config struct {
 	Port       int                      `yaml:"port"`
 	AdminPort  int                      `yaml:"admin_port"`
-	Validators validators.ValidatorsConfig `yaml:"validators"`
+	Validators ValidatorsConfig         `yaml:"validators"`
 	Audit      AuditConfig              `yaml:"audit"`
 	Resolver   resolver.ResolverConfig  `yaml:"resolver"`
 }

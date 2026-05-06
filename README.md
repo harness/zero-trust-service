@@ -1,71 +1,117 @@
 # Zero-Trust Service (ZTS)
 
-A Go library for building a task authorization layer between the Harness Platform and the Delegate. ZTS provides a pluggable validator chain, optional pipeline template resolution, audit logging, and metrics — all customer-controlled.
-
-## How It Works
+ZTS is a **customer-controlled authorization layer** that sits between the Harness Platform and the Delegate. Before a Delegate executes any task (deploy, script, pipeline step, etc.), it sends the task to ZTS for approval. ZTS evaluates the task against a chain of validators and returns an allow or deny decision. This gives platform operators fine-grained, policy-driven control over what the Delegate is permitted to do — independent of the Harness control plane.
 
 ```
 Harness Manager ──► Delegate ──► ZTS /api/verify ──► allowed / denied
                                       │
-                                      ├─ Global validators
-                                      ├─ Task-type validators
-                                      ├─ Custom validators (webhook)
-                                      └─ Pipeline resolver (optional)
+                                      ├─ Global validators (apply to all tasks)
+                                      ├─ Task-type validators (per task type)
+                                      ├─ Custom validators (e.g. webhook)
+                                      └─ Pipeline resolver (optional, expands templates)
 ```
 
-The Delegate sends each task to ZTS before execution. ZTS runs a chain of validators and returns allow/deny. The chain, resolver, audit, and metrics are all pluggable — bring your own implementations or use the provided defaults.
+Everything is pluggable — validators, audit backends, metrics collectors, and the pipeline resolver can all be swapped or extended without modifying the core library.
 
-## Quick Start
+## Folder Structure
+
+```
+zero-trust-service/
+├── server.go / verify.go / output.go / options.go   Core HTTP server and API handlers
+├── types/                                            Request/response DTOs and handler types
+│
+├── verifier/                 Verifier abstraction — the chain that decides allow/deny
+│   ├── account/              Built-in: require_account verifier
+│   ├── tasktype/             Built-in: shellscript and image_allowlist verifiers
+│   ├── pipeline/             Built-in: step_lookup verifier
+│   └── instrumented/         Metrics + tracking wrapper for verifiers
+│
+├── audit/                    Audit logging abstraction (Writer interface)
+│   └── file/                 File-based audit implementation
+│
+├── metrics/                  Metrics abstraction (Counter, Histogram, Gauge)
+│   └── prometheus/           Prometheus metrics implementation
+│
+├── resolver/                 Pipeline template resolver (expands templateRef YAML)
+│   └── scm/                  SCM-backed resource loading (GitHub, GitLab, Harness Code, etc.)
+│
+└── examples/
+    ├── zts/                  Full-featured server example (config, Docker, K8s manifests)
+    ├── basic/                Minimal server with hardcoded verifiers
+    ├── webhook_server/       Sample external policy webhook + custom webhook verifier
+    └── monitoring/           Local Prometheus + Grafana stack
+```
+
+## How to Use
+
+### Quick Start
 
 ```bash
 # Prerequisites: Go 1.24+
 git clone <repo-url> && cd zero-trust-service
 
-make run-example-zts   # starts on http://localhost:4210
+make run-example-zts     # starts API on :4210, admin on :8898
 
 curl -s -X POST http://localhost:4210/api/verify \
   -H "Content-Type: application/json" \
   -d '{"taskPackage":{"delegateTaskId":"t1","accountId":"myAcct","data":{"taskType":"SHELL_SCRIPT_TASK_NG"}}}'
 ```
 
-For the full production-ready example (Docker, K8s, config, env vars), see [`examples/zts/`](./examples/zts/).
+For a more elaborate server example (Docker, K8s, config, env vars), see [`examples/zts/`](./examples/zts/).
 
-## Core Components
+### Using ZTS as a Library
 
-### Validators
+At its simplest, you create a server with a verify handler:
 
-Validators run in order: **global → task-type → custom**. First failure blocks the task.
+```go
+package main
 
-| Type | Scope | Description |
-|------|-------|-------------|
-| `require_account` | Global | Reject tasks from unlisted accounts |
-| `step_lookup` | Global | Log step FQN presence in resolved pipeline |
-| `shellscript` | Task-type | Allow only approved shellscript types and commands |
-| `image_allowlist` | Task-type | Allow only approved container image prefixes |
-| `webhook` | Custom | Forward task to an external policy endpoint |
+import "git0.harness.io/…/zero-trust-service"
 
-Custom webhook validators let you add arbitrary policy logic without modifying ZTS — see [`validators/custom/README.md`](./validators/custom/README.md).
+func main() {
+    srv := zts.NewServer(
+        zts.WithPort(4210),
+        zts.WithVerifyHandler(handler),
+    )
+    srv.ListenAndServe()
+}
+```
 
-### Pipeline Resolver
+The handler is built by composing verifiers into a chain. Custom webhook verifiers let you add arbitrary policy logic without modifying ZTS — see [`examples/webhook_server/`](./examples/webhook_server/).
 
-When enabled, ZTS recursively resolves template references (Pipeline → Stage → Step) using go-scm. Supports GitHub, GitLab, Harness Code, and more. Resolved YAML is available for audit and for downstream validators like `step_lookup`.
+```go
+chain := verifier.Chain(validatorA, validatorB, validatorC)
+handler := verifier.ToHandler(chain)
+```
 
-See [`resolver/README.md`](./resolver/README.md) for details.
+### Writing a Custom Verifier
 
-### Audit
+Implement `verifier.Interface`:
 
-Pluggable audit logging. The library defines an `audit.Writer` interface; a file-based implementation is provided in `audit/file/`. See [`audit/README.md`](./audit/README.md).
+```go
+v := verifier.From(func(ctx context.Context, req types.VerifyRequest) error {
+    // return nil → allow, return error → deny
+    return nil
+})
+```
 
-### Metrics
+See [`examples/webhook_server/`](./examples/webhook_server/) for a complete webhook verifier example.
 
-Pluggable metrics. The library defines `Counter`, `Histogram`, and `Gauge` interfaces; a Prometheus implementation is provided in `metrics/prometheus/`. See [`metrics/README.md`](./metrics/README.md).
+### Pluggable Backends
 
-## API
+| Concern | Interface | Provided Implementations |
+|---------|-----------|--------------------------|
+| Authorization | `verifier.Interface` | `require_account`, `shellscript`, `image_allowlist`, `step_lookup`, `webhook` |
+| Audit | `audit.Writer` | `audit/file` (local filesystem) |
+| Metrics | `metrics.Emitter` | `metrics/prometheus`, `metrics.NewNoop()` |
+| Template resolution | `resolver.ResourceLoader`, `resolver.TemplateStore` | `resolver/scm` (go-scm for GitHub, GitLab, etc.) |
+
+### API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/verify` | POST | Authorize a delegate task |
-| `/api/output` | POST | Receive task output from delegate |
+| `/api/output` | POST | Receive task output from the delegate |
 
 Admin endpoints (metrics, healthz, audit queries) are hosted separately by the application — see [`examples/zts/`](./examples/zts/) for the reference setup.
 
@@ -74,21 +120,25 @@ Admin endpoints (metrics, healthz, audit queries) are hosted separately by the a
 | Directory | README | Description |
 |-----------|--------|-------------|
 | [`verifier/`](./verifier/) | [README](./verifier/README.md) | Core `Interface`, chain, tracker, instrumentation |
-| [`validators/`](./validators/) | [README](./validators/README.md) | Built-in validators and registry |
-| [`validators/custom/`](./validators/custom/) | [README](./validators/custom/README.md) | Webhook validator spec and custom validator guide |
-| [`metrics/`](./metrics/) | [README](./metrics/README.md) | Metrics interfaces + Prometheus implementation |
+| [`metrics/`](./metrics/) | [README](./metrics/README.md) | Metrics Emitter interface + Prometheus implementation |
 | [`resolver/`](./resolver/) | [README](./resolver/README.md) | Pipeline template resolver |
 | [`audit/`](./audit/) | [README](./audit/README.md) | Audit logging interface + file-based implementation |
-| [`examples/zts/`](./examples/zts/) | [README](./examples/zts/README.md) | Full production ZTS server (config, Docker, K8s) |
-| [`examples/basic/`](./examples/basic/) | — | Minimal server with hardcoded validators |
-| [`examples/webhook_server/`](./examples/webhook_server/) | — | Sample external policy webhook |
+| [`examples/zts/`](./examples/zts/) | [README](./examples/zts/README.md) | Full-featured ZTS server example (config, Docker, K8s) |
+| [`examples/basic/`](./examples/basic/) | — | Minimal server with hardcoded verifiers |
+| [`examples/webhook_server/`](./examples/webhook_server/) | — | Sample webhook policy server + custom verifier |
 | [`examples/monitoring/`](./examples/monitoring/) | — | Local Prometheus + Grafana dashboard |
 
 ## Make Targets
 
 | Target | Description |
 |--------|-------------|
-| `make run-example-zts` | Run the full ZTS example locally |
-| `make run-example-webhook-server` | Run example webhook policy server |
+| `make run-example-zts` | Run the full-featured example locally |
+| `make run-example-basic` | Run the minimal example |
+| `make run-example-webhook-server` | Run the sample webhook policy server |
 | `make test` | Run all tests |
 | `make monitoring-up` | Start local Prometheus + Grafana |
+| `make monitoring-down` | Stop monitoring stack |
+
+For the full deployment guide (Docker, K8s, delegate configuration), see [`examples/zts/README.md`](examples/zts/README.md).
+
+For details on each package, see the README inside that directory.

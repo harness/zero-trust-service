@@ -18,10 +18,11 @@ import (
 	prommetrics "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics/prometheus"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
 	resolverscm "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver/scm"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/validators"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/instrumented"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -33,8 +34,20 @@ func main() {
 		log.Fatalf("failed to load config from %s: %v", *configPath, err)
 	}
 
-	m := prommetrics.New()
-	chain, err := validators.BuildFromConfig(cfg.Validators, m)
+	m := prommetrics.New(
+		prommetrics.WithBuckets("zts_verify_request_duration_seconds",
+			[]float64{0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1}),
+		prommetrics.WithBuckets("zts_verifier_duration_seconds",
+			[]float64{0.0001, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1}),
+		prommetrics.WithBuckets("zts_resolver_duration_seconds",
+			[]float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30}),
+	)
+	reg := DefaultRegistry()
+
+	wrap := func(name string, v verifier.Interface) verifier.Interface {
+		return instrumented.Wrap(name, v, m)
+	}
+	chain, err := BuildChain(cfg.Validators, m, reg.Resolve, wrap)
 	if err != nil {
 		log.Fatalf("failed to build validators from config: %v", err)
 	}
@@ -67,7 +80,7 @@ func main() {
 
 		r := resolver.New(store, loader)
 
-		resolverOpts := []verifier.ResolverMiddlewareOption{
+		resolverOpts := []verifier.ResolverOption{
 			verifier.WithRepoQualifier(func(repo string) string {
 				return cfg.Resolver.QualifyRepo(dp, repo)
 			}),
@@ -75,22 +88,22 @@ func main() {
 		if cfg.Resolver.OutputDir != "" {
 			resolverOpts = append(resolverOpts, verifier.WithOutputDir(cfg.Resolver.OutputDir))
 		}
-		rm := verifier.NewResolverMiddleware(r, m, resolverOpts...)
-		chainParts = append(chainParts, rm)
+		rm := verifier.NewResolver(r, m, resolverOpts...)
+		chain = rm.Wrap(chain)
 		log.Printf("pipeline resolver enabled")
 	}
 
-	chainParts = append(chainParts, chain)
-	fullChain := verifier.Chain(chainParts...)
+	if len(chainParts) > 0 {
+		chainParts = append(chainParts, chain)
+		chain = verifier.Chain(chainParts...)
+	}
 
-	// ZTS core server options
 	opts := []zts.Option{
 		zts.WithPort(cfg.Port),
 		zts.WithMetrics(m),
-		zts.WithVerifyHandler(verifier.ToHandler(fullChain)),
+		zts.WithVerifyHandler(verifier.ToHandler(chain)),
 	}
 
-	// Audit writer (file-backed)
 	var aw *auditfile.Writer
 	if cfg.Audit.Enabled {
 		acfg := auditfile.Config{
@@ -110,15 +123,13 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start audit cleanup goroutine
 	if aw != nil {
 		go aw.Start(ctx)
 	}
 
-	// Admin server (metrics, healthz, audit routes)
 	adminMux := chi.NewRouter()
 	adminMux.Use(middleware.Recoverer)
-	prommetrics.NewHandler().RegisterRoutes(adminMux)
+	adminMux.Handle("/metrics", promhttp.Handler())
 	adminMux.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		io.WriteString(w, "OK")
@@ -146,7 +157,6 @@ func main() {
 		cancel()
 	}()
 
-	// Start admin server
 	go func() {
 		log.Printf("admin server listening on %s", adminServer.Addr)
 		if err := adminServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -159,7 +169,6 @@ func main() {
 		log.Fatalf("server error: %v", err)
 	}
 
-	// Graceful shutdown of admin server
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	adminServer.Shutdown(shutdownCtx)

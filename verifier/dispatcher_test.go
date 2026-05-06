@@ -1,4 +1,4 @@
-package tasktype
+package verifier
 
 import (
 	"context"
@@ -6,14 +6,13 @@ import (
 	"testing"
 
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 )
 
-var passValidator = verifier.From(func(_ context.Context, _ types.VerifyRequest) error { return nil })
-var failValidator = verifier.From(func(_ context.Context, _ types.VerifyRequest) error { return errors.New("blocked") })
+var passValidator = From(func(_ context.Context, _ types.VerifyRequest) error { return nil })
+var failValidator = From(func(_ context.Context, _ types.VerifyRequest) error { return errors.New("blocked") })
 
 func TestDispatcher_MatchingTaskType(t *testing.T) {
-	d := NewDispatcher(map[string]verifier.Interface{
+	d := NewDispatcher(map[string]Interface{
 		"SHELL_SCRIPT": failValidator,
 	})
 
@@ -28,7 +27,7 @@ func TestDispatcher_MatchingTaskType(t *testing.T) {
 }
 
 func TestDispatcher_NonMatchingTaskType(t *testing.T) {
-	d := NewDispatcher(map[string]verifier.Interface{
+	d := NewDispatcher(map[string]Interface{
 		"SHELL_SCRIPT": failValidator,
 	})
 
@@ -43,7 +42,7 @@ func TestDispatcher_NonMatchingTaskType(t *testing.T) {
 }
 
 func TestDispatcher_NilTaskDetails(t *testing.T) {
-	d := NewDispatcher(map[string]verifier.Interface{
+	d := NewDispatcher(map[string]Interface{
 		"SHELL_SCRIPT": passValidator,
 	})
 
@@ -54,7 +53,7 @@ func TestDispatcher_NilTaskDetails(t *testing.T) {
 }
 
 func TestDispatcher_EmptyTaskType(t *testing.T) {
-	d := NewDispatcher(map[string]verifier.Interface{
+	d := NewDispatcher(map[string]Interface{
 		"SHELL_SCRIPT": passValidator,
 	})
 

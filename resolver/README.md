@@ -1,37 +1,39 @@
 # resolver
 
-Recursively expands Harness template references in pipeline YAML so that downstream validators (e.g. `step_lookup`) can inspect the fully-resolved pipeline.
+The resolver package **recursively expands Harness template references in pipeline YAML**. Harness pipelines can reference shared templates at the Pipeline, Stage, and Step levels, and those templates can nest other templates. A delegate task only carries the Git coordinates of the top-level pipeline file — to know which steps actually exist, ZTS must fetch the file from Git, walk the YAML tree, resolve every `templateRef` / `templateInputs` pair, and produce a fully-expanded pipeline.
 
-## Why
+Once resolved, the flat YAML is available to downstream validators (like `step_lookup`) and is included in audit records for forensic review.
 
-Harness pipelines can reference shared templates at three levels — Pipeline, Stage, and Step — and those templates can nest other templates. A delegate task's `ztsMetadata` only carries the Git details of the **top-level** pipeline file. To know which steps actually exist in the pipeline, ZTS must fetch the file from Git, walk the YAML, resolve every `templateRef` / `templateInputs` pair, and produce a flat, fully-expanded YAML.
-
-## Package Layout
+## Folder Structure
 
 ```
 resolver/
-├── resource_loader.go     # Interface: fetch raw file content
-├── template_store.go      # Interface: fetch a template by reference
-├── types.go               # DTOs: Scope, TemplateRef, FileRef, TemplateEntity, ResolvedPipeline
-├── errors.go              # Sentinel errors (ErrNotFound, ErrMaxDepth, ...)
-├── config.go              # Config structs (providers, mappings)
-├── resolver.go            # Core resolution engine
-├── template.go            # templateRef parsing, spec extraction, template merging
-├── yaml_helpers.go        # YAML node manipulation helpers
-└── scm/                   # SCM-backed ResourceLoader + TemplateStore
-    ├── factory.go          #   Creates go-scm clients (GitHub, GitLab, Harness Code, …)
-    ├── loader.go           #   Loader / MultiLoader — fetches files via go-scm
-    └── template_store.go   #   Maps TemplateRef → file path, fetches & parses template YAML
+├── types.go               DTOs: Scope, TemplateRef, FileRef, TemplateEntity, ResolvedPipeline
+├── config.go              Config structs (providers, mappings)
+├── errors.go              Sentinel errors (ErrNotFound, ErrMaxDepth, etc.)
+├── resource_loader.go     ResourceLoader interface — fetch raw file content from a source
+├── template_store.go      TemplateStore interface — fetch a template by reference
+├── resolver.go            Core resolution engine
+├── template.go            templateRef parsing, spec extraction, template merging
+├── yaml_helpers.go        YAML node manipulation helpers
+└── scm/                   SCM-backed implementations
+    ├── factory.go          Creates go-scm clients (GitHub, GitLab, Harness Code, etc.)
+    ├── loader.go           Loader / MultiLoader — fetches files via go-scm
+    └── template_store.go   Maps TemplateRef → file path, fetches & parses template YAML
 ```
 
-## Interfaces
+## How to Use
 
-| Interface | File | Method | Purpose |
-|-----------|------|--------|---------|
-| `ResourceLoader` | `resource_loader.go` | `Find(ctx, repo, path, ref)` | Fetch raw file bytes from a source |
-| `TemplateStore` | `template_store.go` | `GetTemplate(ctx, accountID, ref)` | Resolve a `TemplateRef` → `TemplateEntity` |
+### Interfaces to Implement
 
-## Resolution Engine
+| Interface | Method | Purpose |
+|-----------|--------|---------|
+| `ResourceLoader` | `Find(ctx, repo, path, ref) ([]byte, error)` | Fetch a raw file from a source (Git repo, filesystem, etc.) |
+| `TemplateStore` | `GetTemplate(ctx, accountID, ref TemplateRef) (*TemplateEntity, error)` | Resolve a template reference to its parsed YAML content |
+
+The `scm/` subpackage provides ready-made implementations of both using [go-scm](https://github.com/drone/go-scm), supporting GitHub, GitLab, Harness Code, Bitbucket, Azure DevOps, Stash, and Gitee.
+
+### Resolution Flow
 
 ```
 LoadAndResolvePipeline(accountID, orgID, projectID, fileRef)
@@ -47,24 +49,25 @@ LoadAndResolvePipeline(accountID, orgID, projectID, fileRef)
   └─ return ResolvedPipeline { OriginalYAML, ResolvedYAML, TemplatesUsed }
 ```
 
-## SCM Layer (`scm/`)
+### Wiring (Using the SCM Subpackage)
 
-Implements `ResourceLoader` and `TemplateStore` using [go-scm](https://github.com/drone/go-scm).
+```go
+clients := scm.NewClients(providers)               // create go-scm clients per provider
+multiLoader := scm.NewMultiLoader(clients)          // wrap into a MultiLoader
 
-| Component | What it does |
-|-----------|-------------|
-| `factory.go` → `NewClient(cfg)` | Creates a `go-scm` client for a single provider with auth |
-| `loader.go` → `Loader` | Wraps a single `go-scm` client, implements `ResourceLoader.Find()` |
-| `loader.go` → `MultiLoader` | Holds multiple named `Loader`s, routes requests to the correct provider |
-| `template_store.go` → `TemplateStore` | Maps `TemplateRef` → file path (via mappings or convention), fetches & parses |
+templateStore := scm.NewTemplateStore(multiLoader, cfg, mappings)  // TemplateStore
+pipelineLoader := multiLoader.Loader(defaultProvider)              // ResourceLoader
 
-Supported SCM drivers: `github`, `gitlab`, `harness`, `bitbucket`, `stash`, `azure`, `gitee`.
+resolver := resolver.New(templateStore, pipelineLoader)
+```
 
-### How `templateRef` → file path resolution works
+See `examples/zts/` for a complete wiring example.
+
+### How templateRef → File Path Resolution Works
 
 When `TemplateStore.GetTemplate()` receives a `TemplateRef`, it determines which Git repo, file path, and branch to fetch:
 
-1. **Check template mappings** — if the template identifier has an entry, use its overrides.
+1. **Check template mappings** — if the template identifier has an explicit entry, use its overrides (provider, repo, path, branch).
 
 2. **Fall back to convention**:
 
@@ -74,7 +77,7 @@ When `TemplateStore.GetTemplate()` receives a `TemplateRef`, it determines which
 <base_path>/orgs/<org>/projects/<project>/templates/<id>/<version>.yaml      # project scope
 ```
 
-### Wiring
+### Adding a New SCM Provider
 
 The application is responsible for constructing the resolver with concrete implementations of `ResourceLoader` and `TemplateStore`. The `scm/` subpackage provides ready-made implementations:
 
@@ -90,6 +93,6 @@ See [`examples/zts/`](../examples/zts/) for a complete wiring example.
 
 ## Adding a New SCM Provider
 
-1. Add a case in [`scm/factory.go`](./scm/factory.go) for the `go-scm` driver
+1. Add a case in [`scm/factory.go`](./scm/factory.go) for the [go-scm](https://github.com/drone/go-scm) driver
 2. Add provider credentials to your application's config under the SCM providers section
 3. Map template identifiers → providers in your template mappings file

@@ -22,12 +22,6 @@ func TestResolveOptions_Defaults(t *testing.T) {
 	if opts.auditWriter != nil {
 		t.Error("expected nil audit writer by default")
 	}
-	if opts.auditRoutes != nil {
-		t.Error("expected nil audit routes by default")
-	}
-	if opts.adminRoutes != nil {
-		t.Error("expected nil admin routes by default")
-	}
 }
 
 func TestWithPort(t *testing.T) {
@@ -86,22 +80,4 @@ func TestWithAuditWriter_Panic(t *testing.T) {
 		}
 	}()
 	WithAuditWriter(nil)
-}
-
-func TestWithAuditRoutes_Panic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatal("expected panic for nil audit route registrar")
-		}
-	}()
-	WithAuditRoutes(nil)
-}
-
-func TestWithAdminRoutes_Panic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatal("expected panic for nil admin route registrar")
-		}
-	}()
-	WithAdminRoutes(nil)
 }

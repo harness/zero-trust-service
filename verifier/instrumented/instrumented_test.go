@@ -1,4 +1,4 @@
-package verifier
+package instrumented
 
 import (
 	"context"
@@ -7,12 +7,13 @@ import (
 
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 )
 
 func TestInstrumented_Pass(t *testing.T) {
 	m := metrics.NewNoop()
-	inner := From(func(_ context.Context, _ types.VerifyRequest) error { return nil })
-	v := Instrumented("test_v", inner, m)
+	inner := verifier.From(func(_ context.Context, _ types.VerifyRequest) error { return nil })
+	v := Wrap("test_v", inner, m)
 
 	err := v.Handle(context.Background(), types.VerifyRequest{})
 	if err != nil {
@@ -22,10 +23,10 @@ func TestInstrumented_Pass(t *testing.T) {
 
 func TestInstrumented_Fail_RecordsBlocked(t *testing.T) {
 	m := metrics.NewNoop()
-	inner := From(func(_ context.Context, _ types.VerifyRequest) error {
+	inner := verifier.From(func(_ context.Context, _ types.VerifyRequest) error {
 		return errors.New("denied")
 	})
-	v := Instrumented("test_v", inner, m)
+	v := Wrap("test_v", inner, m)
 
 	req := types.VerifyRequest{
 		TaskPackage: &types.DelegateTaskPackage{
@@ -43,8 +44,8 @@ func TestInstrumented_Fail_RecordsBlocked(t *testing.T) {
 
 func TestInstrumented_RecordsInTracker(t *testing.T) {
 	m := metrics.NewNoop()
-	inner := From(func(_ context.Context, _ types.VerifyRequest) error { return nil })
-	v := Instrumented("my_validator", inner, m)
+	inner := verifier.From(func(_ context.Context, _ types.VerifyRequest) error { return nil })
+	v := Wrap("my_validator", inner, m)
 
 	tracker := NewTracker()
 	ctx := WithTracker(context.Background(), tracker)
@@ -62,10 +63,10 @@ func TestInstrumented_RecordsInTracker(t *testing.T) {
 
 func TestInstrumented_RecordsFailureInTracker(t *testing.T) {
 	m := metrics.NewNoop()
-	inner := From(func(_ context.Context, _ types.VerifyRequest) error {
+	inner := verifier.From(func(_ context.Context, _ types.VerifyRequest) error {
 		return errors.New("nope")
 	})
-	v := Instrumented("bad_v", inner, m)
+	v := Wrap("bad_v", inner, m)
 
 	tracker := NewTracker()
 	ctx := WithTracker(context.Background(), tracker)

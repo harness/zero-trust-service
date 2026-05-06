@@ -1,57 +1,20 @@
 package metrics
 
-// Counter is a monotonically increasing metric.
-type Counter interface {
-	Inc(labels ...string)
+// Dimension is a key-value pair attached to a metric observation.
+type Dimension struct {
+	Key   string
+	Value string
 }
 
-// Histogram records observed values (e.g. durations).
-type Histogram interface {
-	Observe(value float64, labels ...string)
+// Dim is a shorthand constructor for a Dimension.
+func Dim(key, value string) Dimension {
+	return Dimension{Key: key, Value: value}
 }
 
-// Gauge is a metric whose value can go up and down.
-type Gauge interface {
-	Set(value float64, labels ...string)
+// Emitter is the interface for recording metrics. Packages define their own
+// metric names and dimensions; the metrics package only provides this interface.
+type Emitter interface {
+	Counter(name string, value float64, dims ...Dimension)
+	Histogram(name string, value float64, dims ...Dimension)
+	Gauge(name string, value float64, dims ...Dimension)
 }
-
-// Metrics holds all ZTS metric handles.
-type Metrics struct {
-	VerifyRequestsTotal   Counter
-	VerifyRequestDuration Histogram
-
-	ValidatorEvaluationsTotal Counter
-	ValidatorDuration         Histogram
-
-	BlockedTasksTotal    Counter
-	MissingMetadataTotal Counter
-
-	ValidatorsRegistered Gauge
-
-	ResolverDuration Histogram
-	ResolverTotal    Counter
-
-	OutputRequestsTotal Counter
-}
-
-const (
-	LabelStatusAuthorized   = "authorized"
-	LabelStatusUnauthorized = "unauthorized"
-	LabelStatusSuccess      = "success"
-	LabelStatusError        = "error"
-	LabelResultPass         = "pass"
-	LabelResultFail         = "fail"
-
-	LabelScopeGlobal   = "global"
-	LabelScopeTaskType = "task_type"
-	LabelScopeCustom   = "custom"
-
-	LabelFieldZTSMetadata = "zts_metadata"
-	LabelFieldAccountID   = "account_id"
-	LabelFieldTaskType    = "task_type"
-
-	LabelResolverSuccess = "success"
-	LabelResolverError   = "error"
-	LabelResolverSkipped = "skipped"
-	LabelResolverInline  = "inline"
-)

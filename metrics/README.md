@@ -1,42 +1,45 @@
 # metrics
 
-Abstracts metric collection behind interfaces so ZTS is not coupled to a specific metrics backend.
+The metrics package **decouples ZTS from any specific metrics backend**. It defines a generic `Emitter` interface for counters, histograms, and gauges — ZTS components call these methods without knowing whether the data goes to Prometheus, an OpenTelemetry collector, or nowhere at all.
 
-## Package Layout
+## Folder Structure
 
 ```
 metrics/
-├── metrics.go     # Counter, Histogram, Gauge interfaces + Metrics struct + label constants
-├── noop.go        # No-op implementation (silent, for testing or when metrics are disabled)
+├── metrics.go       Emitter interface and Dimension type
+├── noop.go          No-op implementation (silent, for testing or when metrics are disabled)
 └── prometheus/
-    └── prometheus.go  # Prometheus implementation + Handler (RouteRegistrar for /metrics)
+    └── prometheus.go    Prometheus implementation with lazy metric registration
 ```
 
-## Interfaces
+## How to Use
 
-| Interface | Method | Description |
-|-----------|--------|-------------|
-| `Counter` | `Inc(labels ...string)` | Monotonically increasing counter |
-| `Histogram` | `Observe(value float64, labels ...string)` | Records observed values (e.g. durations) |
-| `Gauge` | `Set(value float64, labels ...string)` | Value that can go up and down |
+### The Emitter Interface
 
-## Metrics Struct
+`Emitter` is a simple three-method interface. Each method accepts a metric name, a value, and zero or more `Dimension` key-value pairs:
 
-`Metrics` holds all ZTS metric handles. Every ZTS component receives a `*Metrics` — it never interacts with a specific backend directly.
+```go
+m.Counter("zts_verify_requests_total", 1, metrics.Dimension{Key: "status", Value: "authorized"}, metrics.Dimension{Key: "account_id", Value: "acc-123"})
+m.Histogram("zts_verify_request_duration_seconds", 0.003, metrics.Dimension{Key: "status", Value: "authorized"})
+```
 
-## Implementations
+Each package defines its own metric names and dimension key/value strings locally. The metrics package only provides the `Emitter` interface and the `Dimension` type.
 
-| Implementation | Constructor | Usage |
-|----------------|------------|-------|
-| No-op | `metrics.NewNoop()` | Default fallback, testing, metrics disabled |
-| Prometheus | `prometheus.New()` | Production use with Prometheus scraping |
+### Provided Implementations
+
+| Implementation | Constructor | When to use |
+|----------------|------------|-------------|
+| No-op | `metrics.NewNoop()` | Testing, or when metrics are disabled |
+| Prometheus | `prometheus.New()` | Production with Prometheus scraping |
 | Prometheus (custom registry) | `prometheus.NewWithRegistry(reg)` | Tests needing isolated registries |
 
-The Prometheus package also provides `prometheus.NewHandler()` which implements `RouteRegistrar` and mounts `GET /metrics` on the admin router.
+### Implementing a New Backend
 
-## Adding a New Backend
+1. Create a subpackage (e.g. `metrics/otel/`).
+2. Implement the `Emitter` interface.
 
-1. Create a subpackage (e.g. `metrics/otel/`)
-2. Implement `Counter`, `Histogram`, `Gauge` interfaces
-3. Return a populated `*metrics.Metrics`
-4. Optionally implement `RouteRegistrar` if the backend has an HTTP endpoint
+```go
+func New() metrics.Emitter {
+    return &otelEmitter{/* ... */}
+}
+```

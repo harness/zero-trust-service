@@ -1,63 +1,128 @@
 # verifier
 
-Core abstractions for the ZTS validator chain.
+The verifier package is the **decision engine** of ZTS. It defines what a verifier is, how verifiers are composed into a chain, and how that chain produces an allow/deny decision for every delegate task. If you want to add new authorization logic to ZTS — whether it's an account allowlist, an image policy, or a call to an external system — this is the abstraction you work with.
 
-## Key Types
+The package also handles task-type routing (run different verifiers for different task types), pipeline resolution middleware (fetch and expand template YAML so verifiers can inspect the full pipeline), and per-request tracking (which verifiers ran, which one failed).
 
-| File | What |
-|------|------|
-| `verifier.go` | `Interface` — single method `Handle(ctx, request) error` |
-| `chain.go` | `Chain(...)` — runs validators in order, short-circuits on first error |
-| `handler.go` | `ToHandler(v)` — adapts a `verifier.Interface` into `types.VerifyHandler` |
-| `tracker.go` | `Tracker` — per-request state: validators run, failures |
-| `instrumented.go` | `Instrumented(name, v, m)` — wraps a validator with metrics (counter + histogram) |
-| `resolver_middleware.go` | `ResolverMiddleware` — resolves pipeline YAML, stores result in context via `PipelineHolder` |
-
-## How the Chain Works
+## Folder Structure
 
 ```
-handleVerify()
-  └─ Tracker created & injected into context
-       └─ Chain([resolver_middleware?, require_account, step_lookup, dispatcher, webhook])
-            ├─ each validator calls Handle(ctx, request)
-            ├─ Instrumented wrapper records metrics + updates Tracker
-            └─ first error → chain stops, task denied
+verifier/
+├── verifier.go             Interface definition and From() helper
+├── chain.go                Chain() — sequential verifier composition
+├── handler.go              ToHandler() — adapts Interface into an HTTP handler
+├── config.go               VerifiersConfig, VerifierDef (config structs)
+├── dispatcher.go           Dispatcher — routes to per-task-type verifier chains
+├── resolver_middleware.go  Resolver middleware, PipelineHolder, context helpers
+│
+├── account/                Built-in verifier: require_account
+├── tasktype/               Built-in verifiers: shellscript, image_allowlist
+├── pipeline/               Built-in verifier: step_lookup
+└── instrumented/           Wrap() for metrics + Tracker for per-request state
 ```
 
-## Writing a New Middleware
+## How to Use
 
-Implement `Interface`:
+### The Core Abstraction
+
+Every verifier implements a single interface:
 
 ```go
-type MyMiddleware struct{}
-
-func (m *MyMiddleware) Handle(ctx context.Context, req types.VerifyRequest) error {
-    // return nil to pass, return error to block
-    return nil
+type Interface interface {
+    Handle(ctx context.Context, request types.VerifyRequest) error
 }
 ```
 
-Or use the functional shortcut:
+- Return `nil` → the task passes this verifier.
+- Return an `error` → the task is denied; the error message becomes the denial reason.
+
+For simple cases, use the functional shortcut instead of defining a struct:
 
 ```go
-verifier.From(func(ctx context.Context, req types.VerifyRequest) error {
+v := verifier.From(func(ctx context.Context, req types.VerifyRequest) error {
+    if req.ResolveAccountID() != "allowed-account" {
+        return fmt.Errorf("account not permitted")
+    }
     return nil
 })
 ```
 
-## Tracker
+### Composing Verifiers
 
-The `Tracker` is injected into the context at request start. Any validator can read/write it:
-
-```go
-t := verifier.TrackerFrom(ctx)
-t.Record("my_validator", false)              // log a pass
-```
-
-## PipelineHolder
-
-The resolver middleware stores the resolved pipeline in a `PipelineHolder` in the context, separate from the `Tracker`. Downstream validators access it via:
+`Chain` runs verifiers in order; the first error stops the chain and denies the task:
 
 ```go
-rp := verifier.ResolvedPipelineFrom(ctx)     // *resolver.ResolvedPipeline or nil
+chain := verifier.Chain(accountValidator, imageValidator, webhookValidator)
 ```
+
+`ToHandler` adapts a `verifier.Interface` into a `types.VerifyHandler` that the ZTS HTTP server uses:
+
+```go
+handler := verifier.ToHandler(chain)
+// handler returns VerifyResponse{Allowed: true} on nil,
+// or VerifyResponse{Allowed: false, Reason: err.Error()} on error.
+```
+
+### Registering a Custom Verifier Type
+
+Define your verifier constructor in its own package:
+
+```go
+package mypolicy
+
+type Config struct {
+    MaxRisk int
+}
+
+func New(cfg Config) (verifier.Interface, error) {
+    return verifier.From(func(ctx context.Context, req types.VerifyRequest) error {
+        // your logic here
+        return nil
+    }), nil
+}
+```
+
+Then supply a `ResolveFunc` to `BuildFromConfig`. The consumer owns the registry and config decoding — for example, a YAML-based application might do:
+
+```go
+resolve := func(name string, cfg any) (verifier.Interface, error) {
+    switch name {
+    case "my_policy":
+        // decode cfg (yaml.Node, JSON, etc.) into your typed config
+        return mypolicy.New(parsed)
+    default:
+        return nil, fmt.Errorf("unknown verifier: %s", name)
+    }
+}
+```
+
+See `examples/zts/main.go` for a full registry-based implementation.
+
+### Config-Driven Build
+
+`BuildFromConfig` constructs the full chain from a `ValidatorsConfig` and a `ResolveFunc`:
+
+1. **Global** verifiers — run on every request
+2. **Dispatcher** — routes to per-task-type verifier chains
+3. **Custom** verifiers — run after task-type verifiers
+
+Each verifier is optionally wrapped with instrumentation (metrics + tracker) via the `WrapFunc` parameter.
+
+### Task-Type Routing
+
+The `Dispatcher` inspects the request's task type and delegates to the matching chain. Unknown task types pass through (no-op).
+
+### Pipeline Resolution
+
+The `Resolver` middleware fetches pipeline YAML from SCM, recursively expands template references, and stores the result in the context via `PipelineHolder`. Downstream verifiers access it with:
+
+```go
+rp := verifier.ResolvedPipelineFrom(ctx) // *resolver.ResolvedPipeline or nil
+```
+
+### Per-Request Tracking
+
+The `instrumented` subpackage provides:
+
+- **`Wrap(name, v, emitter)`** — decorates a verifier with timing, pass/fail counters, and tracker updates.
+- **`Tracker`** — injected into context at request start; records which verifiers ran and which (if any) failed. The results feed into audit records.

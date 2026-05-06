@@ -3,62 +3,62 @@ package prometheus
 import (
 	"testing"
 
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
 	prom "github.com/prometheus/client_golang/prometheus"
 )
 
-func TestNewWithRegistry_AllFieldsPopulated(t *testing.T) {
-	m := NewWithRegistry(prom.NewRegistry())
-
-	if m.VerifyRequestsTotal == nil {
-		t.Error("VerifyRequestsTotal is nil")
-	}
-	if m.VerifyRequestDuration == nil {
-		t.Error("VerifyRequestDuration is nil")
-	}
-	if m.ValidatorEvaluationsTotal == nil {
-		t.Error("ValidatorEvaluationsTotal is nil")
-	}
-	if m.ValidatorDuration == nil {
-		t.Error("ValidatorDuration is nil")
-	}
-	if m.BlockedTasksTotal == nil {
-		t.Error("BlockedTasksTotal is nil")
-	}
-	if m.MissingMetadataTotal == nil {
-		t.Error("MissingMetadataTotal is nil")
-	}
-	if m.ValidatorsRegistered == nil {
-		t.Error("ValidatorsRegistered is nil")
-	}
-	if m.ResolverDuration == nil {
-		t.Error("ResolverDuration is nil")
-	}
-	if m.ResolverTotal == nil {
-		t.Error("ResolverTotal is nil")
-	}
-	if m.OutputRequestsTotal == nil {
-		t.Error("OutputRequestsTotal is nil")
-	}
+func TestNewWithRegistry_ImplementsEmitter(t *testing.T) {
+	var _ metrics.Emitter = NewWithRegistry(prom.NewRegistry())
 }
 
 func TestNewWithRegistry_OperationsDoNotPanic(t *testing.T) {
 	m := NewWithRegistry(prom.NewRegistry())
-	m.VerifyRequestsTotal.Inc("status", "account")
-	m.VerifyRequestDuration.Observe(0.5, "status")
-	m.ValidatorEvaluationsTotal.Inc("v", "pass")
-	m.ValidatorDuration.Observe(0.1, "v")
-	m.BlockedTasksTotal.Inc("acc", "type", "v")
-	m.MissingMetadataTotal.Inc("field")
-	m.ValidatorsRegistered.Set(3, "global")
-	m.ResolverDuration.Observe(1.0, "success")
-	m.ResolverTotal.Inc("success")
-	m.OutputRequestsTotal.Inc("success", "acc")
+	m.Counter("test_counter", 1, metrics.Dimension{Key: "status", Value: "success"})
+	m.Histogram("test_hist", 0.5, metrics.Dimension{Key: "status", Value: "success"})
+	m.Gauge("test_gauge", 3, metrics.Dimension{Key: "scope", Value: "global"})
 }
 
 func TestNewWithRegistry_MultipleInstances(t *testing.T) {
 	m1 := NewWithRegistry(prom.NewRegistry())
 	m2 := NewWithRegistry(prom.NewRegistry())
 
-	m1.VerifyRequestsTotal.Inc("s", "a")
-	m2.VerifyRequestsTotal.Inc("s", "b")
+	m1.Counter("test_counter", 1, metrics.Dimension{Key: "status", Value: "a"})
+	m2.Counter("test_counter", 1, metrics.Dimension{Key: "status", Value: "b"})
+}
+
+func TestWithBuckets(t *testing.T) {
+	m := NewWithRegistry(prom.NewRegistry(),
+		WithBuckets("custom_hist", []float64{0.1, 0.5, 1.0}),
+	)
+	m.Histogram("custom_hist", 0.3, metrics.Dimension{Key: "status", Value: "ok"})
+}
+
+func TestNew_UsesDefaultRegistry(t *testing.T) {
+	// Just verify it doesn't panic
+	_ = New()
+}
+
+func TestCounter_DuplicateKeysCollapsed(t *testing.T) {
+	m := NewWithRegistry(prom.NewRegistry())
+	m.Counter("dup_counter", 1,
+		metrics.Dim("status", "success"),
+		metrics.Dim("status", "override"),
+	)
+}
+
+func TestSplit_DuplicateKeysLastWins(t *testing.T) {
+	dims := []metrics.Dimension{
+		metrics.Dim("status", "success"),
+		metrics.Dim("account_id", "acc-1"),
+		metrics.Dim("status", "override"),
+	}
+	keys, vals := split(dims)
+	if len(keys) != 2 || len(vals) != 2 {
+		t.Fatalf("expected 2 unique keys, got keys=%v vals=%v", keys, vals)
+	}
+	for i, k := range keys {
+		if k == "status" && vals[i] != "override" {
+			t.Errorf("expected last-wins for status, got %s", vals[i])
+		}
+	}
 }

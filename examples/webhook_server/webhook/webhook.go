@@ -1,4 +1,4 @@
-package custom
+package webhook
 
 import (
 	"bytes"
@@ -16,19 +16,26 @@ import (
 
 const (
 	defaultTimeout = 5 * time.Second
-	maxBodySize    = 1 << 20 // 1 MB
+	maxBodySize    = 1 << 20
 )
 
-// webhookResponse is the expected JSON response from the external endpoint.
-// Matches the ZtsVerificationResponse structure: allowed/reason/metadata.
+// Config holds the webhook validator configuration.
+type Config struct {
+	Name               string            `yaml:"name"`
+	URL                string            `yaml:"url"`
+	Method             string            `yaml:"method"`
+	Timeout            string            `yaml:"timeout"`
+	Headers            map[string]string `yaml:"headers"`
+	FailOpen           bool              `yaml:"fail_open"`
+	AllowedStatusCodes []int             `yaml:"allowed_status_codes"`
+}
+
 type webhookResponse struct {
 	Allowed  bool                   `json:"allowed"`
 	Reason   string                 `json:"reason,omitempty"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
-// webhook calls an external HTTP endpoint with the full verify request
-// and expects a pass/fail JSON response.
 type webhook struct {
 	name               string
 	method             string
@@ -39,72 +46,52 @@ type webhook struct {
 	allowedStatusCodes map[int]struct{}
 }
 
-// Webhook creates a new webhook validator from config.
-//
-// Expected config keys:
-//
-//	name:                 string  — friendly name for logging / metrics
-//	method:               string  — HTTP method, e.g. "POST", "PUT" (default: POST)
-//	url:                  string  — the endpoint to call (required)
-//	timeout:              string  — HTTP timeout, e.g. "5s" (default: 5s)
-//	headers:              map     — extra HTTP headers to send
-//	fail_open:            bool    — if true, allow the request when the webhook is unreachable (default: false)
-//	allowed_status_codes: []int   — HTTP status codes treated as success (default: 200-299)
-func Webhook(cfg map[string]any) (verifier.Interface, error) {
-	rawURL, _ := cfg["url"].(string)
-	if rawURL == "" {
+// New creates a new webhook validator from typed config.
+func New(cfg Config) (verifier.Interface, error) {
+	if cfg.URL == "" {
 		return nil, fmt.Errorf("webhook: \"url\" is required")
 	}
 
-	name, _ := cfg["name"].(string)
+	name := cfg.Name
 	if name == "" {
-		name = rawURL
+		name = cfg.URL
 	}
 
 	method := http.MethodPost
-	if raw, ok := cfg["method"].(string); ok && raw != "" {
-		method = strings.ToUpper(raw)
+	if cfg.Method != "" {
+		method = strings.ToUpper(cfg.Method)
 	}
 
 	timeout := defaultTimeout
-	if raw, ok := cfg["timeout"].(string); ok && raw != "" {
-		d, err := time.ParseDuration(raw)
+	if cfg.Timeout != "" {
+		d, err := time.ParseDuration(cfg.Timeout)
 		if err != nil {
-			return nil, fmt.Errorf("webhook: invalid timeout %q: %w", raw, err)
+			return nil, fmt.Errorf("webhook: invalid timeout %q: %w", cfg.Timeout, err)
 		}
 		timeout = d
 	}
 
-	headers := make(map[string]string)
-	if raw, ok := cfg["headers"].(map[string]any); ok {
-		for k, v := range raw {
-			headers[k] = fmt.Sprintf("%v", v)
-		}
+	headers := cfg.Headers
+	if headers == nil {
+		headers = make(map[string]string)
 	}
 
-	failOpen, _ := cfg["fail_open"].(bool)
-
 	allowedCodes := make(map[int]struct{})
-	if raw, ok := cfg["allowed_status_codes"].([]any); ok {
-		for _, v := range raw {
-			if code, ok := toInt(v); ok {
-				allowedCodes[code] = struct{}{}
-			}
-		}
+	for _, code := range cfg.AllowedStatusCodes {
+		allowedCodes[code] = struct{}{}
 	}
 
 	return &webhook{
 		name:               name,
 		method:             method,
-		url:                rawURL,
+		url:                cfg.URL,
 		client:             &http.Client{Timeout: timeout},
 		headers:            headers,
-		failOpen:           failOpen,
+		failOpen:           cfg.FailOpen,
 		allowedStatusCodes: allowedCodes,
 	}, nil
 }
 
-// Handle sends the full VerifyRequest to the configured URL and interprets the response.
 func (w *webhook) Handle(ctx context.Context, request types.VerifyRequest) error {
 	body, err := json.Marshal(request)
 	if err != nil {
@@ -123,7 +110,7 @@ func (w *webhook) Handle(ctx context.Context, request types.VerifyRequest) error
 	resp, err := w.client.Do(req)
 	if err != nil {
 		if w.failOpen {
-			return nil // webhook unreachable, fail-open allows the request
+			return nil
 		}
 		return fmt.Errorf("webhook %q: call failed: %w", w.name, err)
 	}
@@ -157,24 +144,10 @@ func (w *webhook) Handle(ctx context.Context, request types.VerifyRequest) error
 	return nil
 }
 
-// isAllowedStatus returns true if the HTTP status code is acceptable.
-// When allowed_status_codes is configured, only those codes pass.
-// Otherwise the default 200-299 range is used.
 func (w *webhook) isAllowedStatus(code int) bool {
 	if len(w.allowedStatusCodes) > 0 {
 		_, ok := w.allowedStatusCodes[code]
 		return ok
 	}
 	return code >= 200 && code < 300
-}
-
-// toInt converts a YAML-decoded numeric value to int.
-func toInt(v any) (int, bool) {
-	switch n := v.(type) {
-	case int:
-		return n, true
-	case float64:
-		return int(n), true
-	}
-	return 0, false
 }

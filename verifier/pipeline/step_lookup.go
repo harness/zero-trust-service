@@ -8,16 +8,16 @@ import (
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 )
 
-// StepLookup creates a validator that looks up the current step in the
-// resolved pipeline YAML using the stepFqn from ZTSMetadata.
-//
-// Config keys (all optional):
-//
-//	log_found: bool   — log when a step is found (default: true)
-//	log_missing: bool — log when a step is not found (default: true)
-func StepLookup(cfg map[string]any) (verifier.Interface, error) {
-	logFound := boolCfg(cfg, "log_found", true)
-	logMissing := boolCfg(cfg, "log_missing", true)
+// StepLookupConfig holds the step lookup verifier configuration.
+type StepLookupConfig struct {
+	LogFound   bool `yaml:"log_found"`
+	LogMissing bool `yaml:"log_missing"`
+}
+
+// NewStepLookup creates a step lookup validator from typed config.
+func NewStepLookup(cfg StepLookupConfig) (verifier.Interface, error) {
+	logFound := cfg.LogFound
+	logMissing := cfg.LogMissing
 
 	return verifier.From(func(ctx context.Context, request types.VerifyRequest) error {
 		rp := verifier.ResolvedPipelineFrom(ctx)
@@ -67,17 +67,16 @@ type StepStatus int
 
 const (
 	StepFound   StepStatus = iota
-	StepMissing            // step not found in the resolved YAML
+	StepMissing
 )
 
 // LookupResult contains the outcome of a step lookup.
 type LookupResult struct {
 	Status   StepStatus
-	StepType string // populated when Status == StepFound
+	StepType string
 }
 
 // LookupStep searches for a step in the given pipeline YAML using its FQN.
-// It returns whether the step was found or missing.
 func LookupStep(pipelineYAML, fqn string) LookupResult {
 	root := ParsePipeline(pipelineYAML)
 	if root == nil {
@@ -90,19 +89,4 @@ func LookupStep(pipelineYAML, fqn string) LookupResult {
 	}
 
 	return LookupResult{Status: StepMissing}
-}
-
-func boolCfg(cfg map[string]any, key string, defaultVal bool) bool {
-	if cfg == nil {
-		return defaultVal
-	}
-	v, ok := cfg[key]
-	if !ok {
-		return defaultVal
-	}
-	b, ok := v.(bool)
-	if !ok {
-		return defaultVal
-	}
-	return b
 }

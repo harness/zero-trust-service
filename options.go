@@ -9,7 +9,7 @@ import (
 type options struct {
 	Port          int
 	verifyHandler types.VerifyHandler
-	metrics       *metrics.Metrics
+	metrics       metrics.Emitter
 	auditWriter   audit.Writer
 }
 
@@ -43,7 +43,7 @@ func WithVerifyHandler(handler types.VerifyHandler) Option {
 	return func(o *options) { o.verifyHandler = handler }
 }
 
-func WithMetrics(m *metrics.Metrics) Option {
+func WithMetrics(m metrics.Emitter) Option {
 	if m == nil {
 		panic("metrics must not be nil")
 	}

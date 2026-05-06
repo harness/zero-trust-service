@@ -13,10 +13,22 @@ import (
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
 )
 
+const (
+	metricResolverDuration = "zts_resolver_duration_seconds"
+	metricResolverTotal    = "zts_resolver_total"
+
+	resolverInline  = "inline"
+	resolverSuccess = "success"
+	resolverError   = "error"
+
+	keyStatus    = "status"
+	keyAccountID = "account_id"
+)
+
 type resolvedPipelineKey struct{}
 
 // PipelineHolder is a mutable container stored in the context so that the
-// resolver middleware can share the resolved pipeline with downstream validators.
+// resolver can share the resolved pipeline with downstream verifiers.
 type PipelineHolder struct {
 	pipeline *resolver.ResolvedPipeline
 }
@@ -48,54 +60,59 @@ func ResolvedPipelineFrom(ctx context.Context) *resolver.ResolvedPipeline {
 	return h.Get()
 }
 
-// ResolverMiddleware resolves the pipeline YAML and stores the result in the
-// context via PipelineHolder. Resolution errors are logged but never fail the chain.
-type ResolverMiddleware struct {
+// Middleware wraps a verifier, enriching or intercepting the request.
+type Middleware func(next Interface) Interface
+
+// Resolver resolves pipeline YAML from SCM and stores the result in the
+// context via PipelineHolder before delegating to the next verifier.
+type Resolver struct {
 	resolver  *resolver.Resolver
-	metrics   *metrics.Metrics
+	metrics   metrics.Emitter
 	qualifyFn func(repo string) string
 	outputDir string
 }
 
-type ResolverMiddlewareOption func(*ResolverMiddleware)
+type ResolverOption func(*Resolver)
 
-func WithRepoQualifier(fn func(repo string) string) ResolverMiddlewareOption {
-	return func(rm *ResolverMiddleware) { rm.qualifyFn = fn }
+func WithRepoQualifier(fn func(repo string) string) ResolverOption {
+	return func(r *Resolver) { r.qualifyFn = fn }
 }
 
-// WithOutputDir configures the middleware to write resolved pipeline YAML
-// to the given directory. The file is named after the execution/task ID.
-func WithOutputDir(dir string) ResolverMiddlewareOption {
-	return func(rm *ResolverMiddleware) { rm.outputDir = dir }
+// WithOutputDir configures the resolver to write resolved pipeline YAML
+// to the given directory.
+func WithOutputDir(dir string) ResolverOption {
+	return func(r *Resolver) { r.outputDir = dir }
 }
 
-func NewResolverMiddleware(r *resolver.Resolver, m *metrics.Metrics, opts ...ResolverMiddlewareOption) *ResolverMiddleware {
-	rm := &ResolverMiddleware{resolver: r, metrics: m}
+func NewResolver(r *resolver.Resolver, m metrics.Emitter, opts ...ResolverOption) *Resolver {
+	res := &Resolver{resolver: r, metrics: m}
 	for _, o := range opts {
-		o(rm)
+		o(res)
 	}
-	return rm
+	return res
 }
 
-func (rm *ResolverMiddleware) Handle(ctx context.Context, request types.VerifyRequest) error {
-	result := rm.tryResolve(ctx, request)
-	if result == nil {
-		return nil
-	}
-	if h := PipelineHolderFrom(ctx); h != nil {
-		h.set(result)
-	}
-	return nil
+// Wrap returns a new verifier that resolves the pipeline, stores it
+// in context, then calls next.Handle.
+func (rm *Resolver) Wrap(next Interface) Interface {
+	return From(func(ctx context.Context, request types.VerifyRequest) error {
+		ctx, holder := WithPipelineHolder(ctx)
+		result := rm.tryResolve(ctx, request)
+		if result != nil {
+			holder.set(result)
+		}
+		return next.Handle(ctx, request)
+	})
 }
 
-func (rm *ResolverMiddleware) qualifyRepo(repo string) string {
+func (rm *Resolver) qualifyRepo(repo string) string {
 	if rm.qualifyFn != nil {
 		return rm.qualifyFn(repo)
 	}
 	return repo
 }
 
-func (rm *ResolverMiddleware) tryResolve(ctx context.Context, request types.VerifyRequest) *resolver.ResolvedPipeline {
+func (rm *Resolver) tryResolve(ctx context.Context, request types.VerifyRequest) *resolver.ResolvedPipeline {
 	m := rm.metrics
 	meta := request.TaskPackage
 	if meta == nil || meta.ZTSMetadata == nil {
@@ -105,8 +122,10 @@ func (rm *ResolverMiddleware) tryResolve(ctx context.Context, request types.Veri
 	zts := meta.ZTSMetadata
 	git := zts.PipelineGitDetails
 
+	accountID := zts.AccountID
+
 	if git == nil || git.RepoName == "" || git.FilePath == "" {
-		m.ResolverTotal.Inc(metrics.LabelResolverInline)
+		m.Counter(metricResolverTotal, 1, metrics.Dim(keyStatus, resolverInline), metrics.Dim(keyAccountID, accountID))
 		return nil
 	}
 
@@ -138,14 +157,14 @@ func (rm *ResolverMiddleware) tryResolve(ctx context.Context, request types.Veri
 	dur := time.Since(start)
 
 	if err != nil {
-		m.ResolverTotal.Inc(metrics.LabelResolverError)
-		m.ResolverDuration.Observe(dur.Seconds(), metrics.LabelResolverError)
+		m.Counter(metricResolverTotal, 1, metrics.Dim(keyStatus, resolverError), metrics.Dim(keyAccountID, accountID))
+		m.Histogram(metricResolverDuration, dur.Seconds(), metrics.Dim(keyStatus, resolverError), metrics.Dim(keyAccountID, accountID))
 		log.Printf("[resolver] failed execution=%s duration=%s: %v", fileID, dur, err)
 		return nil
 	}
 
-	m.ResolverTotal.Inc(metrics.LabelResolverSuccess)
-	m.ResolverDuration.Observe(dur.Seconds(), metrics.LabelResolverSuccess)
+	m.Counter(metricResolverTotal, 1, metrics.Dim(keyStatus, resolverSuccess), metrics.Dim(keyAccountID, accountID))
+	m.Histogram(metricResolverDuration, dur.Seconds(), metrics.Dim(keyStatus, resolverSuccess), metrics.Dim(keyAccountID, accountID))
 
 	if rm.outputDir != "" {
 		rm.writeResolved(fileID, result.ResolvedYAML)
@@ -156,7 +175,7 @@ func (rm *ResolverMiddleware) tryResolve(ctx context.Context, request types.Veri
 	return result
 }
 
-func (rm *ResolverMiddleware) writeResolved(fileID, yaml string) {
+func (rm *Resolver) writeResolved(fileID, yaml string) {
 	if err := os.MkdirAll(rm.outputDir, 0o755); err != nil {
 		log.Printf("[resolver] failed to create output dir %s: %v", rm.outputDir, err)
 		return

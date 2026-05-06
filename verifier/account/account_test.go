@@ -9,9 +9,7 @@ import (
 )
 
 func TestAllowlist_Valid(t *testing.T) {
-	v, err := Allowlist(map[string]any{
-		"allowed_accounts": []any{"acc1", "acc2"},
-	})
+	v, err := New(Config{AllowedAccounts: []string{"acc1", "acc2"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -27,9 +25,7 @@ func TestAllowlist_Valid(t *testing.T) {
 }
 
 func TestAllowlist_Blocked(t *testing.T) {
-	v, err := Allowlist(map[string]any{
-		"allowed_accounts": []any{"acc1"},
-	})
+	v, err := New(Config{AllowedAccounts: []string{"acc1"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -45,9 +41,7 @@ func TestAllowlist_Blocked(t *testing.T) {
 }
 
 func TestAllowlist_MissingAccountID(t *testing.T) {
-	v, err := Allowlist(map[string]any{
-		"allowed_accounts": []any{"acc1"},
-	})
+	v, err := New(Config{AllowedAccounts: []string{"acc1"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -63,9 +57,7 @@ func TestAllowlist_MissingAccountID(t *testing.T) {
 }
 
 func TestAllowlist_FallbackToTopLevelAccountID(t *testing.T) {
-	v, err := Allowlist(map[string]any{
-		"allowed_accounts": []any{"top-level-acc"},
-	})
+	v, err := New(Config{AllowedAccounts: []string{"top-level-acc"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -79,22 +71,8 @@ func TestAllowlist_FallbackToTopLevelAccountID(t *testing.T) {
 }
 
 func TestAllowlist_ConfigErrors(t *testing.T) {
-	tests := []struct {
-		name string
-		cfg  map[string]any
-	}{
-		{"missing key", map[string]any{}},
-		{"not a list", map[string]any{"allowed_accounts": "not-a-list"}},
-		{"empty list", map[string]any{"allowed_accounts": []any{}}},
-		{"non-string item", map[string]any{"allowed_accounts": []any{123}}},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := Allowlist(tc.cfg)
-			if err == nil {
-				t.Fatal("expected error")
-			}
-		})
+	_, err := New(Config{})
+	if err == nil {
+		t.Fatal("expected error for empty config")
 	}
 }

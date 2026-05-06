@@ -2,67 +2,27 @@ package metrics
 
 import "testing"
 
-func TestNewNoop_AllFieldsPopulated(t *testing.T) {
-	m := NewNoop()
-
-	if m.VerifyRequestsTotal == nil {
-		t.Error("VerifyRequestsTotal is nil")
-	}
-	if m.VerifyRequestDuration == nil {
-		t.Error("VerifyRequestDuration is nil")
-	}
-	if m.ValidatorEvaluationsTotal == nil {
-		t.Error("ValidatorEvaluationsTotal is nil")
-	}
-	if m.ValidatorDuration == nil {
-		t.Error("ValidatorDuration is nil")
-	}
-	if m.BlockedTasksTotal == nil {
-		t.Error("BlockedTasksTotal is nil")
-	}
-	if m.MissingMetadataTotal == nil {
-		t.Error("MissingMetadataTotal is nil")
-	}
-	if m.ValidatorsRegistered == nil {
-		t.Error("ValidatorsRegistered is nil")
-	}
-	if m.ResolverDuration == nil {
-		t.Error("ResolverDuration is nil")
-	}
-	if m.ResolverTotal == nil {
-		t.Error("ResolverTotal is nil")
-	}
-	if m.OutputRequestsTotal == nil {
-		t.Error("OutputRequestsTotal is nil")
-	}
+func TestNewNoop_ImplementsEmitter(t *testing.T) {
+	var _ Emitter = NewNoop()
 }
 
 func TestNewNoop_OperationsDoNotPanic(t *testing.T) {
 	m := NewNoop()
-	m.VerifyRequestsTotal.Inc("status", "account")
-	m.VerifyRequestDuration.Observe(0.5, "status")
-	m.ValidatorEvaluationsTotal.Inc("v", "pass")
-	m.ValidatorDuration.Observe(0.1, "v")
-	m.BlockedTasksTotal.Inc("acc", "type", "v")
-	m.MissingMetadataTotal.Inc("field")
-	m.ValidatorsRegistered.Set(3, "global")
-	m.ResolverDuration.Observe(1.0, "success")
-	m.ResolverTotal.Inc("success")
-	m.OutputRequestsTotal.Inc("success", "acc")
+	m.Counter("test_counter", 1, Dimension{Key: "status", Value: "success"}, Dimension{Key: "account_id", Value: "acc"})
+	m.Histogram("test_hist", 0.5, Dimension{Key: "status", Value: "success"})
+	m.Gauge("test_gauge", 3, Dimension{Key: "scope", Value: "global"})
 }
 
-func TestLabelConstants(t *testing.T) {
-	labels := []string{
-		LabelStatusAuthorized, LabelStatusUnauthorized,
-		LabelStatusSuccess, LabelStatusError,
-		LabelResultPass, LabelResultFail,
-		LabelScopeGlobal, LabelScopeTaskType, LabelScopeCustom,
-		LabelFieldZTSMetadata, LabelFieldAccountID, LabelFieldTaskType,
-		LabelResolverSuccess, LabelResolverError, LabelResolverSkipped, LabelResolverInline,
+func TestDimension(t *testing.T) {
+	d := Dimension{Key: "key", Value: "val"}
+	if d.Key != "key" || d.Value != "val" {
+		t.Errorf("expected {key, val}, got {%s, %s}", d.Key, d.Value)
 	}
-	for _, l := range labels {
-		if l == "" {
-			t.Error("found empty label constant")
-		}
+}
+
+func TestDim(t *testing.T) {
+	d := Dim("key", "val")
+	if d.Key != "key" || d.Value != "val" {
+		t.Errorf("expected {key, val}, got {%s, %s}", d.Key, d.Value)
 	}
 }

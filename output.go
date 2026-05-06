@@ -14,13 +14,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	metricOutputRequestsTotal = "zts_output_requests_total"
+)
+
 func (s *Server) handleOutput(w http.ResponseWriter, r *http.Request) {
 	m := s.metrics
 
 	rawBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("[output] failed to read request body: %v", err)
-		m.OutputRequestsTotal.Inc(metrics.LabelStatusError, "")
+		m.Counter(metricOutputRequestsTotal, 1, metrics.Dim(keyStatus, statusError), metrics.Dim(keyAccountID, ""))
 		http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -29,7 +33,7 @@ func (s *Server) handleOutput(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(rawBody, &request); err != nil {
 		log.Printf("[output] failed to deserialize request: %v | size=%d payload=%s",
 			err, len(rawBody), truncate(rawBody, 512))
-		m.OutputRequestsTotal.Inc(metrics.LabelStatusError, "")
+		m.Counter(metricOutputRequestsTotal, 1, metrics.Dim(keyStatus, statusError), metrics.Dim(keyAccountID, ""))
 		http.Error(w, fmt.Sprintf("failed to deserialize request: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -48,7 +52,7 @@ func (s *Server) handleOutput(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[output] received task output account_id=%s task_id=%s task_type=%s response_code=%s",
 		accountID, taskID, taskTypeName, responseCode)
 
-	m.OutputRequestsTotal.Inc(metrics.LabelStatusSuccess, accountID)
+	m.Counter(metricOutputRequestsTotal, 1, metrics.Dim(keyStatus, statusSuccess), metrics.Dim(keyAccountID, accountID))
 
 	if s.auditWriter != nil {
 		record := audit.OutputRecord{
