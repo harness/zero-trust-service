@@ -1,6 +1,9 @@
 package types
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestResolveAccountID_PreferZTSMetadata(t *testing.T) {
 	req := VerifyRequest{
@@ -73,5 +76,31 @@ func TestResolveTaskType_NilTaskDetails(t *testing.T) {
 	req := VerifyRequest{TaskPackage: &DelegateTaskPackage{}}
 	if got := req.ResolveTaskType(); got != "" {
 		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+func TestVerifyRequest_UnmarshalDecodedPayload(t *testing.T) {
+	body := []byte(`{
+		"taskPackage": {"delegateTaskId": "task-1"},
+		"decodedPayload": {
+			"kind": "CI_EXECUTE_STEP",
+			"source": "serializedStep",
+			"payload": {"executionId": "runtime"},
+			"error": ""
+		}
+	}`)
+
+	var req VerifyRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		t.Fatalf("unexpected unmarshal error: %v", err)
+	}
+	if req.DecodedPayload == nil {
+		t.Fatal("expected decoded payload")
+	}
+	if req.DecodedPayload.Kind != "CI_EXECUTE_STEP" {
+		t.Fatalf("expected CI_EXECUTE_STEP, got %q", req.DecodedPayload.Kind)
+	}
+	if got := req.DecodedPayload.Payload["executionId"]; got != "runtime" {
+		t.Fatalf("expected runtime execution id, got %v", got)
 	}
 }
