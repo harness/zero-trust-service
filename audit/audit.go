@@ -35,6 +35,7 @@ type Record struct {
 	Allowed            bool          `json:"allowed"`
 	FailedValidator    string        `json:"failedValidator,omitempty"`
 	Reason             string        `json:"reason,omitempty"`
+	Error              string        `json:"error,omitempty"`
 	Duration           time.Duration `json:"duration"`
 	ValidatorsRun      []string      `json:"validatorsRun,omitempty"`
 }

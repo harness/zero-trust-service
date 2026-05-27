@@ -15,6 +15,8 @@ import (
 	zts "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service"
 	auditfile "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit/file"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/examples/zts/config"
+	outputmw "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/middleware/output"
+	verifymw "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/middleware/verify"
 	prommetrics "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics/prometheus"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
 	resolverscm "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver/scm"
@@ -52,7 +54,6 @@ func main() {
 		log.Fatalf("failed to build validators from config: %v", err)
 	}
 
-	var chainParts []verifier.Interface
 	if cfg.Resolver.Enabled {
 		cfg.Resolver.Defaults()
 		clients, err := resolverscm.NewClients(cfg.Resolver.SCM)
@@ -93,15 +94,15 @@ func main() {
 		log.Printf("pipeline resolver enabled")
 	}
 
-	if len(chainParts) > 0 {
-		chainParts = append(chainParts, chain)
-		chain = verifier.Chain(chainParts...)
+	// Verify middleware stack — outermost first.
+	verifyMW := []zts.VerifyMiddleware{
+		verifymw.Logging(),
+		verifymw.Metrics(m),
+		verifymw.MissingMetadata(m),
 	}
-
-	opts := []zts.Option{
-		zts.WithPort(cfg.Port),
-		zts.WithMetrics(m),
-		zts.WithVerifyHandler(verifier.ToHandler(chain)),
+	outputMW := []zts.OutputMiddleware{
+		outputmw.Logging(),
+		outputmw.Metrics(m),
 	}
 
 	var aw *auditfile.Writer
@@ -114,11 +115,17 @@ func main() {
 		if err != nil {
 			log.Fatalf("failed to create audit writer: %v", err)
 		}
-		opts = append(opts, zts.WithAuditWriter(aw))
+		verifyMW = append(verifyMW, verifymw.Audit(aw))
+		outputMW = append(outputMW, outputmw.Audit(aw))
 		log.Printf("audit enabled, writing to %s", acfg.Dir)
 	}
 
-	server := zts.NewServer(opts...)
+	server := zts.NewServer(
+		zts.WithPort(cfg.Port),
+		zts.WithVerifyHandler(verifier.ToHandler(chain)),
+		zts.WithVerifyMiddleware(verifyMW...),
+		zts.WithOutputMiddleware(outputMW...),
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

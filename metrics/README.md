@@ -19,8 +19,8 @@ metrics/
 `Emitter` is a simple three-method interface. Each method accepts a metric name, a value, and zero or more `Dimension` key-value pairs:
 
 ```go
-m.Counter("zts_verify_requests_total", 1, metrics.Dimension{Key: "status", Value: "authorized"}, metrics.Dimension{Key: "account_id", Value: "acc-123"})
-m.Histogram("zts_verify_request_duration_seconds", 0.003, metrics.Dimension{Key: "status", Value: "authorized"})
+m.Counter("zts_verify_requests_total", 1, metrics.Dim("status", "authorized"), metrics.Dim("account_id", "acc-123"))
+m.Histogram("zts_verify_request_duration_seconds", 0.003, metrics.Dim("status", "authorized"), metrics.Dim("account_id", "acc-123"))
 ```
 
 Each package defines its own metric names and dimension key/value strings locally. The metrics package only provides the `Emitter` interface and the `Dimension` type.

@@ -30,7 +30,7 @@ type Writer interface {
 
 | Type | Event Kind | Fields |
 |------|-----------|--------|
-| `Record` | `"verify"` | Task ID, account, task type, allowed/denied, failed validator, duration, validators run |
+| `Record` | `"verify"` | Task ID, account, task type, allowed/denied, failed validator, reason, error, duration, validators run |
 | `OutputRecord` | `"output"` | Task ID, account, task type name, response code |
 
 Both implement `AuditRecord`, which provides:
@@ -54,7 +54,14 @@ func (w *MyWriter) WriteEvent(kind string, record audit.AuditRecord, rawPayload 
 }
 ```
 
-Pass it to the ZTS server via `zts.WithAuditWriter(myWriter)`.
+Pass it to the verify/output middleware constructors:
+
+```go
+zts.WithVerifyMiddleware(verifymw.Audit(myWriter))
+zts.WithOutputMiddleware(outputmw.Audit(myWriter))
+```
+
+The middleware calls `WriteEvent` synchronously — the implementation decides how to optimize (spawn a goroutine, batch events, etc.).
 
 The `Writer` interface intentionally has no lifecycle methods — the application manages the backend's connection lifecycle separately.
 

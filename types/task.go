@@ -91,3 +91,30 @@ func (r VerifyRequest) ResolveTaskType() string {
 	}
 	return r.TaskPackage.TaskDetails.TaskType
 }
+
+// TaskID returns the delegate task ID, or empty string if the task package
+// is missing.
+func (r VerifyRequest) TaskID() string {
+	if r.TaskPackage == nil {
+		return ""
+	}
+	return r.TaskPackage.TaskID
+}
+
+// DelegateID returns the delegate ID from the task package, or empty if
+// the task package is missing.
+func (r VerifyRequest) DelegateID() string {
+	if r.TaskPackage == nil {
+		return ""
+	}
+	return r.TaskPackage.DelegateID
+}
+
+// DelegateInstanceID returns the delegate instance ID from the task
+// package, or empty if the task package is missing.
+func (r VerifyRequest) DelegateInstanceID() string {
+	if r.TaskPackage == nil {
+		return ""
+	}
+	return r.TaskPackage.DelegateInstanceID
+}

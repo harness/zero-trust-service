@@ -60,9 +60,6 @@ func ResolvedPipelineFrom(ctx context.Context) *resolver.ResolvedPipeline {
 	return h.Get()
 }
 
-// Middleware wraps a verifier, enriching or intercepting the request.
-type Middleware func(next Interface) Interface
-
 // Resolver resolves pipeline YAML from SCM and stores the result in the
 // context via PipelineHolder before delegating to the next verifier.
 type Resolver struct {

@@ -6,12 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
 )
 
 func TestNewServer_DefaultRoutes(t *testing.T) {
-	s := NewServer(WithMetrics(metrics.NewNoop()))
+	s := NewServer()
 
 	req := httptest.NewRequest("POST", "/api/verify", nil)
 	w := httptest.NewRecorder()
@@ -23,7 +21,7 @@ func TestNewServer_DefaultRoutes(t *testing.T) {
 }
 
 func TestNewServer_OutputRoute(t *testing.T) {
-	s := NewServer(WithMetrics(metrics.NewNoop()))
+	s := NewServer()
 
 	req := httptest.NewRequest("POST", "/api/output", nil)
 	w := httptest.NewRecorder()
@@ -35,10 +33,11 @@ func TestNewServer_OutputRoute(t *testing.T) {
 }
 
 func TestServer_Run_Shutdown(t *testing.T) {
-	s := NewServer(WithMetrics(metrics.NewNoop()), WithPort(19876))
+	s := NewServer(WithPort(19876))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 
 	_ = s.Run(ctx)
 }
+

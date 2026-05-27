@@ -26,6 +26,10 @@ zero-trust-service/
 │   ├── pipeline/             Built-in: step_lookup verifier
 │   └── instrumented/         Metrics + tracking wrapper for verifiers
 │
+├── middleware/               First-party verify/output middleware constructors
+│   ├── verify/               Logging, Metrics, MissingMetadata, Audit (verify chain)
+│   └── output/               Logging, Metrics, Audit (output chain)
+│
 ├── audit/                    Audit logging abstraction (Writer interface)
 │   └── file/                 File-based audit implementation
 │
@@ -120,6 +124,7 @@ Admin endpoints (metrics, healthz, audit queries) are hosted separately by the a
 | Directory | README | Description |
 |-----------|--------|-------------|
 | [`verifier/`](./verifier/) | [README](./verifier/README.md) | Core `Interface`, chain, tracker, instrumentation |
+| [`middleware/`](./middleware/) | [README](./middleware/README.md) | Verify/output middleware constructors (Logging, Metrics, Audit, MissingMetadata) |
 | [`metrics/`](./metrics/) | [README](./metrics/README.md) | Metrics Emitter interface + Prometheus implementation |
 | [`resolver/`](./resolver/) | [README](./resolver/README.md) | Pipeline template resolver |
 | [`audit/`](./audit/) | [README](./audit/README.md) | Audit logging interface + file-based implementation |

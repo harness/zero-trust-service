@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -17,17 +15,15 @@ import (
 type Server struct {
 	httpServer    *http.Server
 	verifyHandler types.VerifyHandler
-	metrics       metrics.Emitter
-	auditWriter   audit.Writer
+	outputHandler types.OutputHandler
 }
 
 func NewServer(opts ...Option) *Server {
 	options := resolveOptions(opts...)
 
 	s := &Server{
-		verifyHandler: options.verifyHandler,
-		metrics:       options.metrics,
-		auditWriter:   options.auditWriter,
+		verifyHandler: options.composedVerifyHandler(),
+		outputHandler: options.composedOutputHandler(),
 	}
 
 	s.httpServer = &http.Server{
