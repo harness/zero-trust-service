@@ -6,18 +6,7 @@ import "context"
 // It wraps a DelegateTaskPackage inside the "taskPackage" field, matching
 // the Java ZtsVerificationRequest DTO.
 type VerifyRequest struct {
-	TaskPackage    *DelegateTaskPackage `json:"taskPackage"`
-	DecodedPayload *DecodedPayload      `json:"decodedPayload,omitempty"`
-}
-
-// DecodedPayload is a view of opaque task payloads inside the task package.
-// Harness keeps the original taskPackage unchanged and attaches this when a
-// delegate-side decoder can safely expose task-specific data.
-type DecodedPayload struct {
-	Kind    string                 `json:"kind,omitempty"`
-	Source  string                 `json:"source,omitempty"`
-	Payload map[string]interface{} `json:"payload,omitempty"`
-	Error   string                 `json:"error,omitempty"`
+	TaskPackage *DelegateTaskPackage `json:"taskPackage"`
 }
 
 // VerifyResponse is returned to the delegate service.

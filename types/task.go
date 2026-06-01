@@ -62,8 +62,6 @@ type TaskDetails struct {
 	Timeout                int64             `json:"timeout,omitempty"`
 	ExpressionFunctorToken int               `json:"expressionFunctorToken,omitempty"`
 	Expressions            map[string]string `json:"expressions,omitempty"`
-	SerializationFormat    string            `json:"serializationFormat,omitempty"`
-	Data                   json.RawMessage   `json:"data,omitempty"`
 }
 
 // TaskSelector represents a delegate selector

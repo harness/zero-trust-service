@@ -79,28 +79,38 @@ func TestResolveTaskType_NilTaskDetails(t *testing.T) {
 	}
 }
 
-func TestVerifyRequest_UnmarshalDecodedPayload(t *testing.T) {
-	body := []byte(`{
-		"taskPackage": {"delegateTaskId": "task-1"},
-		"decodedPayload": {
-			"kind": "CI_EXECUTE_STEP",
-			"source": "serializedStep",
-			"payload": {"executionId": "runtime"},
-			"error": ""
-		}
-	}`)
+// TestVerifyRequest_UnmarshalPerpetualTaskGitPolling verifies that a GITPOLLING_NG perpetual task
+// payload produced by PerpetualTaskZtsParamDecorator on the delegate is correctly parsed.
+// Kryo bytes fields are decoded into plain JSON and sent inside taskPackage.data.parameters.
+func TestVerifyRequest_UnmarshalPerpetualTaskGitPolling(t *testing.T) {
+	body := []byte(`{"taskPackage":{"delegateTaskId":"task-1","accountId":"test-account","data":{"taskType":"GITPOLLING_NG","parameters":[{"pollingDocId":"polling-doc-1","gitpollingWebhookParams":{"accountId":"test-account","attributes":{"sourceType":"Github","webhookId":"123","connectorDetails":{"identifier":"test-connector","connectorConfig":{"url":"https://github.com/test-org/test-repo.git"}}},"gitPollingTaskType":"GET_WEBHOOK_EVENTS"},"_type":"io.harness.perpetualtask.polling.GitPollingTaskParamsNg"}]},"ztsMetadata":{"accountId":"test-account","orgIdentifier":"test-org","projectIdentifier":"test-project"}}}`)
 
 	var req VerifyRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		t.Fatalf("unexpected unmarshal error: %v", err)
 	}
-	if req.DecodedPayload == nil {
-		t.Fatal("expected decoded payload")
+	if req.TaskPackage == nil {
+		t.Fatal("expected task package")
 	}
-	if req.DecodedPayload.Kind != "CI_EXECUTE_STEP" {
-		t.Fatalf("expected CI_EXECUTE_STEP, got %q", req.DecodedPayload.Kind)
+	if req.TaskPackage.ZTSMetadata == nil {
+		t.Fatal("expected zts metadata")
 	}
-	if got := req.DecodedPayload.Payload["executionId"]; got != "runtime" {
-		t.Fatalf("expected runtime execution id, got %v", got)
+	if got := req.TaskPackage.ZTSMetadata.AccountID; got != "test-account" {
+		t.Errorf("zts metadata accountId: expected test-account, got %q", got)
+	}
+	if req.TaskPackage.TaskDetails == nil {
+		t.Fatal("expected task details")
+	}
+	if got := req.TaskPackage.TaskDetails.TaskType; got != "GITPOLLING_NG" {
+		t.Errorf("taskType: expected GITPOLLING_NG, got %q", got)
+	}
+	if len(req.TaskPackage.TaskDetails.Parameters) == 0 {
+		t.Fatal("expected non-empty decoded parameters")
+	}
+	if got := req.ResolveAccountID(); got != "test-account" {
+		t.Errorf("ResolveAccountID: expected test-account, got %q", got)
+	}
+	if got := req.ResolveTaskType(); got != "GITPOLLING_NG" {
+		t.Errorf("ResolveTaskType: expected GITPOLLING_NG, got %q", got)
 	}
 }
