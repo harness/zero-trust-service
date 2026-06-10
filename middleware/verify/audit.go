@@ -64,6 +64,7 @@ func buildRecord(
 		TaskType:           req.ResolveTaskType(),
 		DelegateID:         req.DelegateID(),
 		DelegateInstanceID: req.DelegateInstanceID(),
+		GitOpsAgentID:      req.GitOpsAgentID(),
 		Allowed:            err == nil && resp.Allowed,
 		Reason:             resp.Reason,
 		Error:              errStr,

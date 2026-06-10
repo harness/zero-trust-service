@@ -31,6 +31,7 @@ func Audit(w audit.Writer) zts.OutputMiddleware {
 				TaskID:       req.TaskID,
 				TaskTypeName: req.TaskTypeName(),
 				ResponseCode: req.ResponseCode(),
+				GitOpsAgentID: req.GitOpsAgentID(),
 			}
 			rawPayload := json.RawMessage(requestctx.RawPayloadFrom(ctx))
 			w.WriteEvent(audit.EventOutput, record, rawPayload)

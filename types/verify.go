@@ -2,11 +2,12 @@ package types
 
 import "context"
 
-// VerifyRequest is the top-level request sent by the delegate service.
-// It wraps a DelegateTaskPackage inside the "taskPackage" field, matching
-// the Java ZtsVerificationRequest DTO.
+// VerifyRequest is the top-level request sent by the delegate service or
+// the GitOps agent. Both use the same TaskPackage structure — GitOps agents
+// populate the subset of fields they have (TaskID, AccountID, GitOpsAgentID,
+// TaskDetails.TaskType).
 type VerifyRequest struct {
-	TaskPackage *DelegateTaskPackage `json:"taskPackage"`
+	TaskPackage *TaskPackage `json:"taskPackage"`
 }
 
 // VerifyResponse is returned to the delegate service.

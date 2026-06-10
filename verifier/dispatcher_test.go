@@ -17,7 +17,7 @@ func TestDispatcher_MatchingTaskType(t *testing.T) {
 	})
 
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskDetails: &types.TaskDetails{TaskType: "SHELL_SCRIPT"},
 		},
 	}
@@ -32,7 +32,7 @@ func TestDispatcher_NonMatchingTaskType(t *testing.T) {
 	})
 
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskDetails: &types.TaskDetails{TaskType: "OTHER_TASK"},
 		},
 	}
@@ -58,7 +58,7 @@ func TestDispatcher_EmptyTaskType(t *testing.T) {
 	})
 
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskDetails: &types.TaskDetails{TaskType: ""},
 		},
 	}

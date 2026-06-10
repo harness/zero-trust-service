@@ -29,7 +29,7 @@ func TestInstrumented_Fail_RecordsBlocked(t *testing.T) {
 	v := Wrap("test_v", inner, m)
 
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			AccountID: "acc1",
 			TaskDetails: &types.TaskDetails{
 				TaskType: "SHELL_SCRIPT",

@@ -22,6 +22,7 @@ zero-trust-service/
 │
 ├── verifier/                 Verifier abstraction — the chain that decides allow/deny
 │   ├── account/              Built-in: require_account verifier
+│   ├── taskdenylist/         Built-in: task_denylist (global denied task types)
 │   ├── tasktype/             Built-in: shellscript and image_allowlist verifiers
 │   ├── pipeline/             Built-in: step_lookup verifier
 │   └── instrumented/         Metrics + tracking wrapper for verifiers
@@ -54,11 +55,19 @@ zero-trust-service/
 # Prerequisites: Go 1.24+
 git clone <repo-url> && cd zero-trust-service
 
-make run-example-zts     # starts API on :4210, admin on :8898
+mkdir -p /tmp/zts/audits
+export ZTS_AUDIT_DIR=/tmp/zts/audits   # required on macOS; default /var/log/zts needs root
+make run-example-zts                   # API :4210, admin :8898
 
+# Delegate task
 curl -s -X POST http://localhost:4210/api/verify \
   -H "Content-Type: application/json" \
   -d '{"taskPackage":{"delegateTaskId":"t1","accountId":"myAcct","data":{"taskType":"SHELL_SCRIPT_TASK_NG"}}}'
+
+# GitOps agent task (same /api/verify endpoint, same taskPackage structure with agentId)
+curl -s -X POST http://localhost:4210/api/verify \
+  -H "Content-Type: application/json" \
+  -d '{"taskPackage":{"taskId":"t1","accountId":"myAcct","gitOpsAgentId":"local-agent","data":{"taskType":"GITOPS_APP_SYNC"}}}'
 ```
 
 For a more elaborate server example (Docker, K8s, config, env vars), see [`examples/zts/`](./examples/zts/).
@@ -105,7 +114,7 @@ See [`examples/webhook_server/`](./examples/webhook_server/) for a complete webh
 
 | Concern | Interface | Provided Implementations |
 |---------|-----------|--------------------------|
-| Authorization | `verifier.Interface` | `require_account`, `shellscript`, `image_allowlist`, `step_lookup`, `webhook` |
+| Authorization | `verifier.Interface` | `require_account`, `task_denylist`, `shellscript`, `image_allowlist`, `step_lookup`, `webhook` |
 | Audit | `audit.Writer` | `audit/file` (local filesystem) |
 | Metrics | `metrics.Emitter` | `metrics/prometheus`, `metrics.NewNoop()` |
 | Template resolution | `resolver.ResourceLoader`, `resolver.TemplateStore` | `resolver/scm` (go-scm for GitHub, GitLab, etc.) |
@@ -114,8 +123,8 @@ See [`examples/webhook_server/`](./examples/webhook_server/) for a complete webh
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/verify` | POST | Authorize a delegate task |
-| `/api/output` | POST | Receive task output from the delegate |
+| `/api/verify` | POST | Authorize a delegate or GitOps agent task (unified `taskPackage`) |
+| `/api/output` | POST | Receive task output from the delegate or GitOps agent |
 
 Admin endpoints (metrics, healthz, audit queries) are hosted separately by the application — see [`examples/zts/`](./examples/zts/) for the reference setup.
 

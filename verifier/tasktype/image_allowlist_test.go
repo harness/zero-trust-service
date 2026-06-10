@@ -16,7 +16,7 @@ func TestImageAllowlist_Allowed(t *testing.T) {
 
 	params := json.RawMessage(`[{"imageDetails":{"name":"harness/ci-lite-engine:latest"}}]`)
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskDetails: &types.TaskDetails{
 				TaskType:   "INITIALIZATION_PHASE",
 				Parameters: params,
@@ -36,7 +36,7 @@ func TestImageAllowlist_Blocked(t *testing.T) {
 
 	params := json.RawMessage(`[{"imageDetails":{"name":"malicious/miner:latest"}}]`)
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskDetails: &types.TaskDetails{
 				TaskType:   "INITIALIZATION_PHASE",
 				Parameters: params,

@@ -2,13 +2,16 @@ package types
 
 import "encoding/json"
 
-// DelegateTaskPackage mirrors the Java DelegateTaskPackage structure.
-// Field names match the JSON serialization from the Java side exactly.
-type DelegateTaskPackage struct {
-	TaskID                string                 `json:"delegateTaskId"`
+// TaskPackage is the unified task structure for both delegate and GitOps agent
+// requests. Delegates send "delegateTaskId" on the wire (Java DTO compat);
+// GitOps agents send "taskId". A custom UnmarshalJSON transparently maps
+// "delegateTaskId" → TaskID so consumers only see one canonical field.
+type TaskPackage struct {
+	TaskID                string                 `json:"taskId,omitempty"`
 	AccountID             string                 `json:"accountId,omitempty"`
 	DelegateID            string                 `json:"delegateId,omitempty"`
 	DelegateInstanceID    string                 `json:"delegateInstanceId,omitempty"`
+	GitOpsAgentID         string                 `json:"gitOpsAgentId,omitempty"`
 	RunnerResponse        bool                   `json:"runnerResponse,omitempty"`
 	TaskDetails           *TaskDetails           `json:"data,omitempty"`
 	TaskDataV2            *TaskDetails           `json:"taskDataV2,omitempty"`
@@ -23,8 +26,27 @@ type DelegateTaskPackage struct {
 	IsAborted             bool                   `json:"isAborted,omitempty"`
 }
 
+// UnmarshalJSON handles both "taskId" and legacy "delegateTaskId" wire formats.
+// If both are present, "delegateTaskId" takes precedence (delegate-first compat).
+func (t *TaskPackage) UnmarshalJSON(data []byte) error {
+	type Alias TaskPackage
+	aux := struct {
+		Alias
+		DelegateTaskID string `json:"delegateTaskId"`
+	}{
+		Alias: Alias(*t),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*t = TaskPackage(aux.Alias)
+	if aux.DelegateTaskID != "" {
+		t.TaskID = aux.DelegateTaskID
+	}
+	return nil
+}
+
 // GitDetails contains git repository information for the pipeline YAML source
-// Only present for remote/git-backed pipelines (null for inline pipelines)
 type GitDetails struct {
 	RepoName     string `json:"repoName,omitempty"`
 	Branch       string `json:"branch,omitempty"`
@@ -52,8 +74,8 @@ type ZTSMetadata struct {
 	ParentUniqueID     string            `json:"parentUniqueId,omitempty"`
 }
 
-// TaskDetails contains the delegate task execution details.
-// Field names match the DelegateTaskPackage "data" / "taskDataV2" JSON structure.
+// TaskDetails contains the task execution details.
+// Field names match the "data" / "taskDataV2" JSON structure.
 type TaskDetails struct {
 	Parked                 bool              `json:"parked,omitempty"`
 	Async                  bool              `json:"async,omitempty"`
@@ -71,7 +93,7 @@ type TaskSelector struct {
 }
 
 // ResolveAccountID returns the account ID, preferring ZTSMetadata but falling
-// back to the top-level accountId from the DelegateTaskPackage.
+// back to the top-level accountId from the TaskPackage.
 func (r VerifyRequest) ResolveAccountID() string {
 	if r.TaskPackage == nil {
 		return ""
@@ -90,13 +112,20 @@ func (r VerifyRequest) ResolveTaskType() string {
 	return r.TaskPackage.TaskDetails.TaskType
 }
 
-// TaskID returns the delegate task ID, or empty string if the task package
-// is missing.
+// TaskID returns the task ID, or empty string if the task package is missing.
 func (r VerifyRequest) TaskID() string {
 	if r.TaskPackage == nil {
 		return ""
 	}
 	return r.TaskPackage.TaskID
+}
+
+// GitOpsAgentID returns the GitOps agent ID, or empty for delegate tasks.
+func (r VerifyRequest) GitOpsAgentID() string {
+	if r.TaskPackage == nil {
+		return ""
+	}
+	return r.TaskPackage.GitOpsAgentID
 }
 
 // DelegateID returns the delegate ID from the task package, or empty if

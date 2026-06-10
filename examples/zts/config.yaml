@@ -17,6 +17,11 @@ validators:
       config:
         log_found: ${ZTS_STEP_LOOKUP_LOG_FOUND:-true}
         log_missing: ${ZTS_STEP_LOOKUP_LOG_MISSING:-true}
+    # Deny any task type in denied_types (delegate + GitOps). Same pattern as require_account: one global policy.
+    - type: task_denylist
+      enabled: ${ZTS_TASK_DENYLIST_ENABLED:-false}
+      config:
+        denied_types: ${ZTS_DENIED_TASK_TYPES:-[]}
 
   by_task_type:
     SHELL_SCRIPT_TASK_NG:
@@ -42,6 +47,30 @@ validators:
         enabled: ${ZTS_IMAGE_ALLOWLIST_ENABLED:-true}
         config:
           allowed_prefixes: ${ZTS_IMAGE_ALLOWED_PREFIXES:-["harness/", "library/"]}
+
+    GITOPS_APP_SYNC:
+      - type: require_account
+        enabled: ${ZTS_GITOPS_APP_SYNC_ACCOUNT_CHECK:-true}
+        config:
+          allowed_accounts: ${ZTS_ALLOWED_ACCOUNTS:-["kmpySmUISimoRrJL6NL73w"]}
+
+    GITOPS_APP_DELETE:
+      - type: require_account
+        enabled: ${ZTS_GITOPS_APP_DELETE_ACCOUNT_CHECK:-true}
+        config:
+          allowed_accounts: ${ZTS_ALLOWED_ACCOUNTS:-["kmpySmUISimoRrJL6NL73w"]}
+
+    GITOPS_CLUSTER_CREATE:
+      - type: require_account
+        enabled: ${ZTS_GITOPS_CLUSTER_CREATE_ACCOUNT_CHECK:-false}
+        config:
+          allowed_accounts: ${ZTS_ALLOWED_ACCOUNTS:-["kmpySmUISimoRrJL6NL73w"]}
+
+    GITOPS_REPO_CREATE:
+      - type: require_account
+        enabled: ${ZTS_GITOPS_REPO_CREATE_ACCOUNT_CHECK:-false}
+        config:
+          allowed_accounts: ${ZTS_ALLOWED_ACCOUNTS:-["kmpySmUISimoRrJL6NL73w"]}
 
   custom:
     - type: webhook

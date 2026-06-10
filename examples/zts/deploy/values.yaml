@@ -1,5 +1,10 @@
 # Environment variable overrides.
 # All keys here become env vars in the container via envFrom.
+#
+# For GitOps + Delegate combined deployments, this ConfigMap drives policy
+# without any code changes. Edit and re-apply:
+#   kubectl apply -f deploy/values.yaml
+#   kubectl rollout restart deployment/zero-trust-service -n zero-trust-service
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,6 +13,21 @@ metadata:
   labels:
     app.kubernetes.io/name: zero-trust-service
 data:
-  # Account & security
-  ZTS_ALLOWED_ACCOUNTS: '["kmpySmUISimoRrJL6NL73w"]'
+  # ── Account allowlist (Tier 1a) ──────────────────────────────────────
+  # Disabled here for shared automation clusters (sanity runs use many
+  # account IDs against one ZTS instance). For single-tenant production
+  # deployments, set to "true" and configure ZTS_ALLOWED_ACCOUNTS.
+  ZTS_REQUIRE_ACCOUNT_ENABLED: "false"
+  ZTS_GITOPS_APP_SYNC_ACCOUNT_CHECK: "false"
+  ZTS_GITOPS_APP_DELETE_ACCOUNT_CHECK: "false"
+  # Optional: restrict to specific accounts when require_account is enabled.
+  # ZTS_ALLOWED_ACCOUNTS: '["YOUR_HARNESS_ACCOUNT_ID"]'
+
+  # ── Task type denylist (Tier 1b) ─────────────────────────────────────
+  # Block destructive GitOps operations via SaaS commands.
+  # Works for both delegate (e.g. SHELL_SCRIPT_TASK_NG) and GitOps task types.
+  ZTS_TASK_DENYLIST_ENABLED: "true"
+  ZTS_DENIED_TASK_TYPES: '["GITOPS_APP_SYNC"]'
+
+  # ── Delegate image allowlist ─────────────────────────────────────────
   ZTS_IMAGE_ALLOWED_PREFIXES: '["harness/", "plugins/"]'

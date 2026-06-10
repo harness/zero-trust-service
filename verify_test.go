@@ -21,7 +21,7 @@ func TestHandleVerify_Authorized(t *testing.T) {
 	)
 
 	body, _ := json.Marshal(types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskID:    "t1",
 			AccountID: "acc1",
 		},
@@ -53,7 +53,7 @@ func TestHandleVerify_Unauthorized(t *testing.T) {
 	)
 
 	body, _ := json.Marshal(types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{TaskID: "t1"},
+		TaskPackage: &types.TaskPackage{TaskID: "t1"},
 	})
 	req := httptest.NewRequest("POST", "/api/verify", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -83,7 +83,7 @@ func TestHandleVerify_HandlerError(t *testing.T) {
 	)
 
 	body, _ := json.Marshal(types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{TaskID: "t1"},
+		TaskPackage: &types.TaskPackage{TaskID: "t1"},
 	})
 	req := httptest.NewRequest("POST", "/api/verify", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

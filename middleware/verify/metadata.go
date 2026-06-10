@@ -31,7 +31,7 @@ func recordMissingMetadata(req types.VerifyRequest, m metrics.Emitter) {
 		m.Counter(metricMissingMetadataTotal, 1, metrics.Dim(keyField, fieldZTSMetadata))
 		return
 	}
-	if req.TaskPackage.ZTSMetadata == nil {
+	if req.TaskPackage.ZTSMetadata == nil && req.TaskPackage.GitOpsAgentID == "" {
 		m.Counter(metricMissingMetadataTotal, 1, metrics.Dim(keyField, fieldZTSMetadata))
 		return
 	}

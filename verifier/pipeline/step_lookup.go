@@ -37,7 +37,7 @@ func NewStepLookup(cfg StepLookupConfig) (verifier.Interface, error) {
 
 		accountID := request.ResolveAccountID()
 		taskType := request.ResolveTaskType()
-		taskID := pkg.TaskID
+		taskID := request.TaskID()
 		executionID := ""
 		if zts.ExecutionDetails != nil {
 			executionID = zts.ExecutionDetails.PipelineExecutionID

@@ -7,7 +7,7 @@ import (
 
 func TestResolveAccountID_PreferZTSMetadata(t *testing.T) {
 	req := VerifyRequest{
-		TaskPackage: &DelegateTaskPackage{
+		TaskPackage: &TaskPackage{
 			AccountID:   "top-level",
 			ZTSMetadata: &ZTSMetadata{AccountID: "zts-meta"},
 		},
@@ -19,7 +19,7 @@ func TestResolveAccountID_PreferZTSMetadata(t *testing.T) {
 
 func TestResolveAccountID_FallbackToTopLevel(t *testing.T) {
 	req := VerifyRequest{
-		TaskPackage: &DelegateTaskPackage{
+		TaskPackage: &TaskPackage{
 			AccountID: "top-level",
 		},
 	}
@@ -30,7 +30,7 @@ func TestResolveAccountID_FallbackToTopLevel(t *testing.T) {
 
 func TestResolveAccountID_EmptyZTSMetadata(t *testing.T) {
 	req := VerifyRequest{
-		TaskPackage: &DelegateTaskPackage{
+		TaskPackage: &TaskPackage{
 			AccountID:   "top-level",
 			ZTSMetadata: &ZTSMetadata{AccountID: ""},
 		},
@@ -56,7 +56,7 @@ func TestResolveAccountID_NilTaskPackage(t *testing.T) {
 
 func TestResolveTaskType(t *testing.T) {
 	req := VerifyRequest{
-		TaskPackage: &DelegateTaskPackage{
+		TaskPackage: &TaskPackage{
 			TaskDetails: &TaskDetails{TaskType: "SHELL_SCRIPT"},
 		},
 	}
@@ -73,7 +73,7 @@ func TestResolveTaskType_NilTaskPackage(t *testing.T) {
 }
 
 func TestResolveTaskType_NilTaskDetails(t *testing.T) {
-	req := VerifyRequest{TaskPackage: &DelegateTaskPackage{}}
+	req := VerifyRequest{TaskPackage: &TaskPackage{}}
 	if got := req.ResolveTaskType(); got != "" {
 		t.Errorf("expected empty, got %q", got)
 	}
@@ -81,9 +81,8 @@ func TestResolveTaskType_NilTaskDetails(t *testing.T) {
 
 // TestVerifyRequest_UnmarshalPerpetualTaskGitPolling verifies that a GITPOLLING_NG perpetual task
 // payload produced by PerpetualTaskZtsParamDecorator on the delegate is correctly parsed.
-// Kryo bytes fields are decoded into plain JSON and sent inside taskPackage.data.parameters.
 func TestVerifyRequest_UnmarshalPerpetualTaskGitPolling(t *testing.T) {
-	body := []byte(`{"taskPackage":{"delegateTaskId":"task-1","accountId":"test-account","data":{"taskType":"GITPOLLING_NG","parameters":[{"pollingDocId":"polling-doc-1","gitpollingWebhookParams":{"accountId":"test-account","attributes":{"sourceType":"Github","webhookId":"123","connectorDetails":{"identifier":"test-connector","connectorConfig":{"url":"https://github.com/test-org/test-repo.git"}}},"gitPollingTaskType":"GET_WEBHOOK_EVENTS"},"_type":"io.harness.perpetualtask.polling.GitPollingTaskParamsNg"}]},"ztsMetadata":{"accountId":"test-account","orgIdentifier":"test-org","projectIdentifier":"test-project"}}}`)
+	body := []byte(`{"taskPackage":{"delegateTaskId":"task-1","accountId":"test-account","data":{"taskType":"GITPOLLING_NG","parameters":[{"pollingDocId":"polling-doc-1","gitpollingWebhookParams":{"accountId":"test-account","attributes":{"sourceType":"Github","webhookId":"123","connectorDetails":{"identifier":"test-connector","connectorConfig":{"url":"https://github.com/test-org/test-repo.git"}}}},"gitPollingTaskType":"GET_WEBHOOK_EVENTS","_type":"io.harness.perpetualtask.polling.GitPollingTaskParamsNg"}]},"ztsMetadata":{"accountId":"test-account","orgIdentifier":"test-org","projectIdentifier":"test-project"}}}`)
 
 	var req VerifyRequest
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -112,5 +111,135 @@ func TestVerifyRequest_UnmarshalPerpetualTaskGitPolling(t *testing.T) {
 	}
 	if got := req.ResolveTaskType(); got != "GITPOLLING_NG" {
 		t.Errorf("ResolveTaskType: expected GITPOLLING_NG, got %q", got)
+	}
+}
+
+func TestResolveAccountID_GitopsTask(t *testing.T) {
+	req := VerifyRequest{
+		TaskPackage: &TaskPackage{
+			AccountID: "gitops-account",
+			GitOpsAgentID: "agent-1",
+		},
+	}
+	if got := req.ResolveAccountID(); got != "gitops-account" {
+		t.Errorf("expected gitops-account, got %q", got)
+	}
+}
+
+func TestResolveTaskType_GitopsTask(t *testing.T) {
+	req := VerifyRequest{
+		TaskPackage: &TaskPackage{
+			TaskDetails: &TaskDetails{TaskType: "GITOPS_APP_SYNC"},
+			GitOpsAgentID: "agent-1",
+		},
+	}
+	if got := req.ResolveTaskType(); got != "GITOPS_APP_SYNC" {
+		t.Errorf("expected GITOPS_APP_SYNC, got %q", got)
+	}
+}
+
+func TestGitOpsAgentID(t *testing.T) {
+	req := VerifyRequest{
+		TaskPackage: &TaskPackage{
+			GitOpsAgentID: "my-agent",
+		},
+	}
+	if got := req.GitOpsAgentID(); got != "my-agent" {
+		t.Errorf("expected my-agent, got %q", got)
+	}
+}
+
+func TestGitOpsAgentID_Empty(t *testing.T) {
+	req := VerifyRequest{
+		TaskPackage: &TaskPackage{},
+	}
+	if got := req.GitOpsAgentID(); got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+func TestGitOpsAgentID_NilTaskPackage(t *testing.T) {
+	req := VerifyRequest{}
+	if got := req.GitOpsAgentID(); got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+func TestTaskID_Delegate(t *testing.T) {
+	req := VerifyRequest{
+		TaskPackage: &TaskPackage{
+			TaskID: "delegate-task-123",
+		},
+	}
+	if got := req.TaskID(); got != "delegate-task-123" {
+		t.Errorf("expected delegate-task-123, got %q", got)
+	}
+}
+
+func TestTaskID_Gitops(t *testing.T) {
+	req := VerifyRequest{
+		TaskPackage: &TaskPackage{
+			TaskID:  "gitops-task-456",
+			GitOpsAgentID: "agent-1",
+		},
+	}
+	if got := req.TaskID(); got != "gitops-task-456" {
+		t.Errorf("expected gitops-task-456, got %q", got)
+	}
+}
+
+func TestTaskID_DelegatePrecedence(t *testing.T) {
+	body := []byte(`{"taskPackage":{"delegateTaskId":"delegate-id","taskId":"gitops-id"}}`)
+	var req VerifyRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if got := req.TaskID(); got != "delegate-id" {
+		t.Errorf("expected delegateTaskId to take precedence, got %q", got)
+	}
+}
+
+func TestTaskID_Empty(t *testing.T) {
+	req := VerifyRequest{}
+	if got := req.TaskID(); got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+// TestUnmarshalDelegateTaskPackage verifies delegate wire format (delegateTaskId).
+func TestUnmarshalDelegateTaskPackage(t *testing.T) {
+	body := []byte(`{"taskPackage":{"delegateTaskId":"t1","accountId":"abc","data":{"taskType":"SHELL_SCRIPT_TASK_NG"}}}`)
+
+	var req VerifyRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if got := req.TaskID(); got != "t1" {
+		t.Errorf("taskId: expected t1, got %q", got)
+	}
+	if got := req.GitOpsAgentID(); got != "" {
+		t.Errorf("gitOpsAgentId: expected empty for delegate, got %q", got)
+	}
+}
+
+// TestUnmarshalGitopsViaTaskPackage verifies GitOps wire format (taskId + gitOpsAgentId).
+func TestUnmarshalGitopsViaTaskPackage(t *testing.T) {
+	body := []byte(`{"taskPackage":{"taskId":"t1","accountId":"abc","gitOpsAgentId":"prod-agent","data":{"taskType":"GITOPS_APP_SYNC"}}}`)
+
+	var req VerifyRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		t.Fatalf("unmarshal error: %v", err)
+	}
+	if got := req.ResolveAccountID(); got != "abc" {
+		t.Errorf("accountId: expected abc, got %q", got)
+	}
+	if got := req.ResolveTaskType(); got != "GITOPS_APP_SYNC" {
+		t.Errorf("taskType: expected GITOPS_APP_SYNC, got %q", got)
+	}
+	if got := req.GitOpsAgentID(); got != "prod-agent" {
+		t.Errorf("gitOpsAgentId: expected prod-agent, got %q", got)
+	}
+	if got := req.TaskID(); got != "t1" {
+		t.Errorf("taskId: expected t1, got %q", got)
 	}
 }

@@ -36,6 +36,6 @@ func TestFrom_ReceivesRequest(t *testing.T) {
 		return nil
 	})
 	_ = v.Handle(context.Background(), types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{TaskID: "abc"},
+		TaskPackage: &types.TaskPackage{TaskID: "abc"},
 	})
 }

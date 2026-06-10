@@ -82,12 +82,12 @@ func TestBuildChain_GlobalOnly(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	req := types.VerifyRequest{TaskPackage: &types.DelegateTaskPackage{ZTSMetadata: &types.ZTSMetadata{AccountID: "acc1"}}}
+	req := types.VerifyRequest{TaskPackage: &types.TaskPackage{ZTSMetadata: &types.ZTSMetadata{AccountID: "acc1"}}}
 	if err := chain.Handle(context.Background(), req); err != nil {
 		t.Fatalf("expected pass, got %v", err)
 	}
 
-	req2 := types.VerifyRequest{TaskPackage: &types.DelegateTaskPackage{ZTSMetadata: &types.ZTSMetadata{AccountID: "acc2"}}}
+	req2 := types.VerifyRequest{TaskPackage: &types.TaskPackage{ZTSMetadata: &types.ZTSMetadata{AccountID: "acc2"}}}
 	if err := chain.Handle(context.Background(), req2); err == nil {
 		t.Fatal("expected error for blocked account")
 	}
@@ -113,7 +113,7 @@ func TestBuildChain_WithTaskType(t *testing.T) {
 	}
 
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskDetails: &types.TaskDetails{TaskType: "OTHER"},
 		},
 	}
@@ -156,7 +156,7 @@ func TestBuildChain_DisabledValidator(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	req := types.VerifyRequest{TaskPackage: &types.DelegateTaskPackage{ZTSMetadata: &types.ZTSMetadata{AccountID: "unknown"}}}
+	req := types.VerifyRequest{TaskPackage: &types.TaskPackage{ZTSMetadata: &types.ZTSMetadata{AccountID: "unknown"}}}
 	if err := chain.Handle(context.Background(), req); err != nil {
 		t.Fatalf("expected pass with disabled validator, got %v", err)
 	}

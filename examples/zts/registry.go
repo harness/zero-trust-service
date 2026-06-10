@@ -7,6 +7,7 @@ import (
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/account"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/pipeline"
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/taskdenylist"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/tasktype"
 	"gopkg.in/yaml.v3"
 )
@@ -43,6 +44,7 @@ func (r *Registry) Resolve(name string, cfg any) (verifier.Interface, error) {
 func DefaultRegistry() *Registry {
 	reg := NewRegistry()
 	RegisterTyped(reg, "require_account", account.New)
+	RegisterTyped(reg, "task_denylist", taskdenylist.New)
 	RegisterTyped(reg, "shellscript", tasktype.NewShellScript)
 	RegisterTyped(reg, "image_allowlist", tasktype.NewImageAllowlist)
 	RegisterTyped(reg, "step_lookup", pipeline.NewStepLookup)

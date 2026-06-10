@@ -23,7 +23,7 @@ func TestWebhook_Authorized(t *testing.T) {
 	}
 
 	err = v.Handle(context.Background(), types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{TaskID: "t1"},
+		TaskPackage: &types.TaskPackage{TaskID: "t1"},
 	})
 	if err != nil {
 		t.Fatalf("expected pass, got %v", err)
@@ -43,7 +43,7 @@ func TestWebhook_Unauthorized(t *testing.T) {
 	}
 
 	err = v.Handle(context.Background(), types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{TaskID: "t1"},
+		TaskPackage: &types.TaskPackage{TaskID: "t1"},
 	})
 	if err == nil {
 		t.Fatal("expected error for unauthorized")

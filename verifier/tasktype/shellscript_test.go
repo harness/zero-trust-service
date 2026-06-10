@@ -11,7 +11,7 @@ import (
 
 func shellReq(params string) types.VerifyRequest {
 	return types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskDetails: &types.TaskDetails{
 				TaskType:   "SHELL_SCRIPT_TASK_NG",
 				Parameters: json.RawMessage(params),
@@ -47,7 +47,7 @@ func TestShellScript_NilTaskPackage(t *testing.T) {
 func TestShellScript_NilTaskDetails(t *testing.T) {
 	v := bashValidator(t, "echo")
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{},
+		TaskPackage: &types.TaskPackage{},
 	}
 	if err := v.Handle(context.Background(), req); err != nil {
 		t.Fatalf("expected pass for nil TaskDetails: %v", err)
@@ -57,7 +57,7 @@ func TestShellScript_NilTaskDetails(t *testing.T) {
 func TestShellScript_EmptyParameters(t *testing.T) {
 	v := bashValidator(t, "echo")
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			TaskDetails: &types.TaskDetails{TaskType: "SHELL_SCRIPT_TASK_NG"},
 		},
 	}

@@ -61,7 +61,7 @@ func middlewareLogId() verifier.Interface {
 	return verifier.From(func(_ context.Context, request types.VerifyRequest) error {
 		taskID := ""
 		if request.TaskPackage != nil {
-			taskID = request.TaskPackage.TaskID
+			taskID = request.TaskID()
 		}
 		log.Printf("received task_id: %q", taskID)
 		return nil
@@ -72,7 +72,7 @@ func middlewareLogId() verifier.Interface {
 type middleWareIdIsEvenLength struct{}
 
 func (m *middleWareIdIsEvenLength) Handle(_ context.Context, request types.VerifyRequest) error {
-	if request.TaskPackage == nil || len(request.TaskPackage.TaskID)%2 != 0 {
+	if request.TaskPackage == nil || len(request.TaskID())%2 != 0 {
 		return fmt.Errorf("task_id is not even length")
 	}
 	return nil

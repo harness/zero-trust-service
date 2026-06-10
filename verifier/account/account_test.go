@@ -15,7 +15,7 @@ func TestAllowlist_Valid(t *testing.T) {
 	}
 
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			ZTSMetadata: &types.ZTSMetadata{AccountID: "acc1"},
 		},
 	}
@@ -31,7 +31,7 @@ func TestAllowlist_Blocked(t *testing.T) {
 	}
 
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			ZTSMetadata: &types.ZTSMetadata{AccountID: "acc999"},
 		},
 	}
@@ -63,7 +63,7 @@ func TestAllowlist_FallbackToTopLevelAccountID(t *testing.T) {
 	}
 
 	req := types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{AccountID: "top-level-acc"},
+		TaskPackage: &types.TaskPackage{AccountID: "top-level-acc"},
 	}
 	if err := v.Handle(context.Background(), req); err != nil {
 		t.Fatalf("expected pass with top-level account, got %v", err)

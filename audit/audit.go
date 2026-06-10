@@ -32,6 +32,7 @@ type Record struct {
 	TaskType           string        `json:"taskType"`
 	DelegateID         string        `json:"delegateId,omitempty"`
 	DelegateInstanceID string        `json:"delegateInstanceId,omitempty"`
+	GitOpsAgentID      string        `json:"gitOpsAgentId,omitempty"`
 	Allowed            bool          `json:"allowed"`
 	FailedValidator    string        `json:"failedValidator,omitempty"`
 	Reason             string        `json:"reason,omitempty"`
@@ -45,12 +46,13 @@ func (r Record) AuditDate() string { return r.StartTime.UTC().Format("2006-01-02
 
 // OutputRecord is the metadata entry for a task output response.
 type OutputRecord struct {
-	ID           string `json:"id"`
-	Timestamp    int64  `json:"timestamp"`
-	AccountID    string `json:"accountId"`
-	TaskID       string `json:"taskId,omitempty"`
-	TaskTypeName string `json:"taskTypeName,omitempty"`
-	ResponseCode string `json:"responseCode,omitempty"`
+	ID              string `json:"id"`
+	Timestamp       int64  `json:"timestamp"`
+	AccountID       string `json:"accountId"`
+	TaskID          string `json:"taskId,omitempty"`
+	TaskTypeName    string `json:"taskTypeName,omitempty"`
+	ResponseCode    string `json:"responseCode,omitempty"`
+	GitOpsAgentID   string `json:"gitOpsAgentId,omitempty"`
 }
 
 func (r OutputRecord) AuditID() string { return r.ID }

@@ -16,6 +16,7 @@ verifier/
 ├── resolver_middleware.go  Resolver middleware, PipelineHolder, context helpers
 │
 ├── account/                Built-in verifier: require_account
+├── taskdenylist/           Built-in verifier: task_denylist (global denied task types)
 ├── tasktype/               Built-in verifiers: shellscript, image_allowlist
 ├── pipeline/               Built-in verifier: step_lookup
 └── instrumented/           Wrap() for metrics + Tracker for per-request state

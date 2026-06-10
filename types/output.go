@@ -5,15 +5,19 @@ import (
 	"encoding/json"
 )
 
+// OutputRequest is sent by the delegate or GitOps agent after task completion.
 type OutputRequest struct {
 	TaskID       string              `json:"taskId,omitempty"`
 	TaskResponse *TaskOutputResponse `json:"taskResponse"`
 }
 
+// TaskOutputResponse contains the task result metadata. GitOps agents
+// populate GitOpsAgentID; delegates leave it empty.
 type TaskOutputResponse struct {
 	AccountID    string          `json:"accountId,omitempty"`
 	TaskTypeName string          `json:"taskTypeName,omitempty"`
 	ResponseCode string          `json:"responseCode,omitempty"`
+	GitOpsAgentID string         `json:"gitOpsAgentId,omitempty"`
 	Response     json.RawMessage `json:"response,omitempty"`
 }
 
@@ -49,4 +53,12 @@ func (r OutputRequest) ResponseCode() string {
 		return ""
 	}
 	return r.TaskResponse.ResponseCode
+}
+
+// GitOpsAgentID returns the GitOps agent ID, or empty for delegate tasks.
+func (r OutputRequest) GitOpsAgentID() string {
+	if r.TaskResponse == nil {
+		return ""
+	}
+	return r.TaskResponse.GitOpsAgentID
 }

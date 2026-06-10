@@ -15,14 +15,14 @@ func TestRecordMissingMetadata_NilTaskPackage(t *testing.T) {
 func TestRecordMissingMetadata_NilZTSMetadata(t *testing.T) {
 	m := metrics.NewNoop()
 	recordMissingMetadata(types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{},
+		TaskPackage: &types.TaskPackage{},
 	}, m)
 }
 
 func TestRecordMissingMetadata_MissingAccountID(t *testing.T) {
 	m := metrics.NewNoop()
 	recordMissingMetadata(types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			ZTSMetadata: &types.ZTSMetadata{},
 		},
 	}, m)
@@ -31,7 +31,7 @@ func TestRecordMissingMetadata_MissingAccountID(t *testing.T) {
 func TestRecordMissingMetadata_MissingTaskType(t *testing.T) {
 	m := metrics.NewNoop()
 	recordMissingMetadata(types.VerifyRequest{
-		TaskPackage: &types.DelegateTaskPackage{
+		TaskPackage: &types.TaskPackage{
 			ZTSMetadata: &types.ZTSMetadata{AccountID: "acc1"},
 		},
 	}, m)
