@@ -1,10 +1,16 @@
 package scm
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
 	"github.com/drone/go-scm/scm"
+	"github.com/drone/go-scm/scm/driver/github"
 )
 
 func TestNewLoader(t *testing.T) {
@@ -54,7 +60,7 @@ func TestMultiLoader_Loader(t *testing.T) {
 
 func TestMultiLoader_Find_NoLoaders(t *testing.T) {
 	ml := NewMultiLoader(map[string]*scm.Client{})
-	_, err := ml.Find(nil, "repo", "path", "ref")
+	_, err := ml.Find(context.TODO(), "repo", "path", "ref")
 	if err != resolver.ErrNoLoader {
 		t.Errorf("expected ErrNoLoader, got %v", err)
 	}
@@ -376,6 +382,115 @@ func TestQualifyRepo(t *testing.T) {
 	}
 }
 
+func TestParseTemplateYAML_FullMetadata(t *testing.T) {
+	yaml := []byte(`
+template:
+  identifier: myTemplate
+  name: My Template
+  versionLabel: v2
+  type: Step
+`)
+	ref := resolver.TemplateRef{Identifier: "fallback", VersionLabel: "v1", Scope: resolver.ScopeAccount}
+	entity, err := parseTemplateYAML(yaml, ref, "acc1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if entity.Identifier != "myTemplate" {
+		t.Errorf("Identifier = %q, want myTemplate", entity.Identifier)
+	}
+	if entity.VersionLabel != "v2" {
+		t.Errorf("VersionLabel = %q, want v2", entity.VersionLabel)
+	}
+	if entity.Type != "Step" {
+		t.Errorf("Type = %q, want Step", entity.Type)
+	}
+	if entity.AccountIdentifier != "acc1" {
+		t.Errorf("AccountIdentifier = %q, want acc1", entity.AccountIdentifier)
+	}
+	// Raw YAML should be preserved verbatim.
+	if entity.YAML != string(yaml) {
+		t.Error("YAML field not preserved")
+	}
+}
+
+func TestParseTemplateYAML_FallsBackToRef(t *testing.T) {
+	// Template YAML with no identifier/versionLabel → ref values used.
+	yaml := []byte(`template: {}`)
+	ref := resolver.TemplateRef{Identifier: "ref-id", VersionLabel: "v1", Scope: resolver.ScopeOrg, OrgIdentifier: "testorg"}
+	entity, err := parseTemplateYAML(yaml, ref, "acc1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if entity.Identifier != "ref-id" {
+		t.Errorf("Identifier = %q, want ref-id", entity.Identifier)
+	}
+	if entity.VersionLabel != "v1" {
+		t.Errorf("VersionLabel = %q, want v1", entity.VersionLabel)
+	}
+	if entity.OrgIdentifier != "testorg" {
+		t.Errorf("OrgIdentifier = %q, want testorg", entity.OrgIdentifier)
+	}
+}
+
+func TestParseTemplateYAML_InvalidYAML(t *testing.T) {
+	_, err := parseTemplateYAML([]byte(":\t:"), resolver.TemplateRef{}, "acc1")
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+func TestNewClient_UnknownDriver(t *testing.T) {
+	_, err := NewClient(resolver.SCMProviderConfig{Driver: "unsupported"})
+	if err == nil {
+		t.Fatal("expected error for unknown driver")
+	}
+}
+
+func TestNewClient_KnownDrivers(t *testing.T) {
+	// Azure requires non-empty org+project in azure.New(), so it is tested separately.
+	drivers := []resolver.Driver{
+		resolver.DriverGitHub,
+		resolver.DriverGitLab,
+		resolver.DriverBitbucket,
+		resolver.DriverStash,
+		resolver.DriverGitee,
+	}
+	for _, d := range drivers {
+		_, err := NewClient(resolver.SCMProviderConfig{Driver: d})
+		if err != nil {
+			t.Errorf("NewClient(%q) unexpected error: %v", d, err)
+		}
+	}
+}
+
+func TestNewClient_HarnessDriver(t *testing.T) {
+	_, err := NewClient(resolver.SCMProviderConfig{Driver: resolver.DriverHarness, Owner: "acc/org/proj"})
+	if err != nil {
+		t.Fatalf("NewClient(harness) unexpected error: %v", err)
+	}
+}
+
+func TestNewClients_ErrorOnBadDriver(t *testing.T) {
+	_, err := NewClients(resolver.SCMConfig{
+		Providers: map[string]resolver.SCMProviderConfig{
+			"bad": {Driver: "unknown"},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for unknown driver")
+	}
+}
+
+func TestNewClients_Empty(t *testing.T) {
+	clients, err := NewClients(resolver.SCMConfig{Providers: map[string]resolver.SCMProviderConfig{}})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(clients) != 0 {
+		t.Errorf("expected 0 clients, got %d", len(clients))
+	}
+}
+
 func TestParseHarnessOwner(t *testing.T) {
 	tests := []struct {
 		owner              string
@@ -393,5 +508,72 @@ func TestParseHarnessOwner(t *testing.T) {
 			t.Errorf("parseHarnessOwner(%q) = (%q, %q, %q), want (%q, %q, %q)",
 				tt.owner, acct, org, proj, tt.wantAcct, tt.wantOrg, tt.wantProj)
 		}
+	}
+}
+
+// githubStore builds a TemplateStore whose "github" provider points at srv.
+func githubStore(t *testing.T, srv *httptest.Server) *TemplateStore {
+	t.Helper()
+	client, err := github.New(srv.URL)
+	if err != nil {
+		t.Fatalf("github.New: %v", err)
+	}
+	ml := NewMultiLoader(map[string]*scm.Client{"github": client})
+	cfg := resolver.ResolverConfig{
+		SCM: resolver.SCMConfig{
+			Providers: map[string]resolver.SCMProviderConfig{
+				"github": {Driver: resolver.DriverGitHub, Owner: "owner", Branch: "main"},
+			},
+		},
+		Templates: resolver.TemplateStoreConfig{DefaultProvider: "github"},
+	}
+	return NewTemplateStore(ml, cfg, nil)
+}
+
+func TestGetTemplate_LoaderNotFound(t *testing.T) {
+	ml := NewMultiLoader(map[string]*scm.Client{})
+	cfg := resolver.ResolverConfig{Templates: resolver.TemplateStoreConfig{DefaultProvider: "missing"}}
+	store := NewTemplateStore(ml, cfg, nil)
+
+	_, err := store.GetTemplate(context.Background(), "acc1",
+		resolver.TemplateRef{Identifier: "t1", VersionLabel: "v1", Scope: resolver.ScopeAccount})
+	if err == nil {
+		t.Fatal("expected error when loader is missing")
+	}
+}
+
+func TestGetTemplate_Success(t *testing.T) {
+	tmplYAML := "template:\n  identifier: myTpl\n  type: Step\n  versionLabel: v1\n"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"path":    "path/to/tpl.yaml",
+			"content": base64.StdEncoding.EncodeToString([]byte(tmplYAML)),
+		})
+	}))
+	defer srv.Close()
+
+	store := githubStore(t, srv)
+	entity, err := store.GetTemplate(context.Background(), "acc1",
+		resolver.TemplateRef{Identifier: "myTpl", VersionLabel: "v1", Scope: resolver.ScopeAccount})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if entity.Identifier != "myTpl" || entity.Type != "Step" {
+		t.Errorf("unexpected entity: %+v", entity)
+	}
+}
+
+func TestGetTemplate_FindError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	store := githubStore(t, srv)
+	_, err := store.GetTemplate(context.Background(), "acc1",
+		resolver.TemplateRef{Identifier: "missing", VersionLabel: "v1", Scope: resolver.ScopeAccount})
+	if err == nil {
+		t.Fatal("expected error for 404 from SCM")
 	}
 }

@@ -283,6 +283,84 @@ func TestNodeHelpers(t *testing.T) {
 	})
 }
 
+func TestExtractTemplateSpec(t *testing.T) {
+	tests := []struct {
+		name     string
+		yaml     string
+		wantType string
+		wantErr  bool
+		wantSpec bool
+	}{
+		{"valid template", "template:\n  type: Step\n  spec:\n    command: echo hi", "Step", false, true},
+		{"no template node returns doc", "foo: bar", "", false, true},
+		{"template not a map", "template: scalar", "", true, false},
+		{"template no spec", "template:\n  type: Step", "Step", true, false},
+		{"template spec not a map", "template:\n  type: Step\n  spec: scalar", "Step", true, false},
+		{"invalid yaml", "foo: [unclosed", "", true, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spec, typ, err := ExtractTemplateSpec(tt.yaml)
+			if tt.wantErr && err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if typ != tt.wantType {
+				t.Errorf("type = %q, want %q", typ, tt.wantType)
+			}
+			if (spec != nil) != tt.wantSpec {
+				t.Errorf("spec present = %v, want %v", spec != nil, tt.wantSpec)
+			}
+		})
+	}
+}
+
+func TestParseTemplateRefFromNode_Errors(t *testing.T) {
+	tests := []struct {
+		name string
+		yaml string
+	}{
+		{"empty templateRef", "templateRef: \"\""},
+		{"empty uses", "uses: \"\""},
+		{"no ref or uses", "someKey: someValue"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, _, err := ParseTemplateRefFromNode(mustParse(t, tt.yaml)); err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+	}
+	if _, _, err := ParseTemplateRefFromNode(nil); err == nil {
+		t.Fatal("expected error for nil node")
+	}
+}
+
+func TestIsTemplateNode(t *testing.T) {
+	tests := []struct {
+		name string
+		yaml string
+		want bool
+	}{
+		{"template with ref", "template:\n  templateRef: myTpl", true},
+		{"uses form", "uses: myTpl@v1", true},
+		{"plain step", "step:\n  identifier: s1", false},
+		{"template without ref", "template:\n  type: Step", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isTemplateNode(mustParse(t, tt.yaml)); got != tt.want {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+	if isTemplateNode(nil) {
+		t.Error("expected false for nil node")
+	}
+}
+
 func TestNodeToGoValue(t *testing.T) {
 	for _, tt := range []struct {
 		name, yaml string

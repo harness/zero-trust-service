@@ -14,10 +14,11 @@ import (
 
 	zts "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service"
 	auditfile "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit/file"
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/examples/zts/auditreader"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/examples/zts/config"
+	prommetrics "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics/prometheus"
 	outputmw "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/middleware/output"
 	verifymw "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/middleware/verify"
-	prommetrics "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics/prometheus"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
 	resolverscm "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver/scm"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
@@ -139,11 +140,11 @@ func main() {
 	adminMux.Handle("/metrics", promhttp.Handler())
 	adminMux.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		io.WriteString(w, "OK")
+		_, _ = io.WriteString(w, "OK")
 	})
 	if aw != nil {
 		reader := auditfile.NewReader(cfg.Audit.Dir)
-		auditfile.NewHandler(reader).RegisterRoutes(adminMux)
+		auditreader.NewHandler(reader).RegisterRoutes(adminMux)
 	}
 
 	adminServer := &http.Server{
@@ -178,9 +179,13 @@ func main() {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
-	adminServer.Shutdown(shutdownCtx)
+	if err := adminServer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("admin server shutdown: %v", err)
+	}
 
 	if aw != nil {
-		aw.Close()
+		if err := aw.Close(); err != nil {
+			log.Printf("audit writer close: %v", err)
+		}
 	}
 }

@@ -51,7 +51,7 @@ func TestWithVerifyHandler(t *testing.T) {
 	}
 
 	opts := resolveOptions(WithVerifyHandler(handler))
-	opts.verifyHandler(context.Background(), types.VerifyRequest{})
+	_, _ = opts.verifyHandler(context.Background(), types.VerifyRequest{})
 
 	if !called {
 		t.Fatal("custom handler was not called")
@@ -74,7 +74,7 @@ func TestWithOutputHandler(t *testing.T) {
 		return types.OutputResponse{}, nil
 	}
 	opts := resolveOptions(WithOutputHandler(handler))
-	opts.outputHandler(context.Background(), types.OutputRequest{})
+	_, _ = opts.outputHandler(context.Background(), types.OutputRequest{})
 	if !called {
 		t.Fatal("custom output handler was not called")
 	}
@@ -108,7 +108,7 @@ func TestWithVerifyMiddleware_OutermostFirst(t *testing.T) {
 		WithVerifyMiddleware(mw("c")),
 	)
 	h := opts.composedVerifyHandler()
-	h(context.Background(), types.VerifyRequest{})
+	_, _ = h(context.Background(), types.VerifyRequest{})
 
 	want := []string{"a:pre", "b:pre", "c:pre", "c:post", "b:post", "a:post"}
 	if len(calls) != len(want) {
@@ -137,7 +137,7 @@ func TestWithOutputMiddleware_OutermostFirst(t *testing.T) {
 
 	opts := resolveOptions(WithOutputMiddleware(mw("a"), mw("b")))
 	h := opts.composedOutputHandler()
-	h(context.Background(), types.OutputRequest{})
+	_, _ = h(context.Background(), types.OutputRequest{})
 
 	want := []string{"a:pre", "b:pre", "b:post", "a:post"}
 	if len(calls) != len(want) {

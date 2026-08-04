@@ -13,7 +13,7 @@ import (
 func TestWebhook_Authorized(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"allowed": true})
+		_ = json.NewEncoder(w).Encode(map[string]any{"allowed": true})
 	}))
 	defer srv.Close()
 
@@ -33,7 +33,7 @@ func TestWebhook_Authorized(t *testing.T) {
 func TestWebhook_Unauthorized(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"allowed": false, "reason": "policy denied"})
+		_ = json.NewEncoder(w).Encode(map[string]any{"allowed": false, "reason": "policy denied"})
 	}))
 	defer srv.Close()
 
@@ -92,5 +92,67 @@ func TestWebhook_InvalidTimeout(t *testing.T) {
 	_, err := New(Config{URL: "http://example.com", Timeout: "not-a-duration"})
 	if err == nil {
 		t.Fatal("expected error for invalid timeout")
+	}
+}
+
+func TestWebhook_Non2xx_FailOpen(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	v, err := New(Config{URL: srv.URL, FailOpen: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := v.Handle(context.Background(), types.VerifyRequest{}); err != nil {
+		t.Fatalf("expected pass with fail_open on non-2xx, got %v", err)
+	}
+}
+
+func TestWebhook_Non2xx_FailClosed(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	v, err := New(Config{URL: srv.URL})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := v.Handle(context.Background(), types.VerifyRequest{}); err == nil {
+		t.Fatal("expected error for non-2xx with fail_closed")
+	}
+}
+
+func TestWebhook_InvalidResponseJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("not json"))
+	}))
+	defer srv.Close()
+
+	v, err := New(Config{URL: srv.URL})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := v.Handle(context.Background(), types.VerifyRequest{}); err == nil {
+		t.Fatal("expected error for invalid response JSON")
+	}
+}
+
+func TestWebhook_AllowedStatusCodes(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]any{"allowed": true})
+	}))
+	defer srv.Close()
+
+	v, err := New(Config{URL: srv.URL, AllowedStatusCodes: []int{202}})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := v.Handle(context.Background(), types.VerifyRequest{}); err != nil {
+		t.Fatalf("expected pass for 202 in allowed status codes, got %v", err)
 	}
 }

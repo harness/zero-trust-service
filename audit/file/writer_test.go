@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -23,7 +24,7 @@ func newTestWriter(t *testing.T) (*Writer, string) {
 
 func TestWriter_WriteEvent_Verify(t *testing.T) {
 	w, dir := newTestWriter(t)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	now := time.Now().UTC()
 	record := audit.Record{
@@ -69,7 +70,7 @@ func TestWriter_WriteEvent_Verify(t *testing.T) {
 
 func TestWriter_WriteEvent_Output(t *testing.T) {
 	w, dir := newTestWriter(t)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	now := time.Now().UTC()
 	record := audit.OutputRecord{
@@ -110,7 +111,7 @@ func TestWriter_WriteEvent_Output(t *testing.T) {
 
 func TestWriter_WriteEvent_MultipleRecordsSameDay(t *testing.T) {
 	w, dir := newTestWriter(t)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	now := time.Now().UTC()
 	for i := 0; i < 3; i++ {
@@ -156,18 +157,18 @@ func TestWriter_Close(t *testing.T) {
 
 func TestWriter_SelfHeal_StaleFileHandle(t *testing.T) {
 	w, dir := newTestWriter(t)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	now := time.Now().UTC()
 	w.WriteEvent(audit.EventVerify, audit.Record{ID: "r1", StartTime: now, Allowed: true}, json.RawMessage(`{}`))
 
 	w.mu.Lock()
 	for _, h := range w.files {
-		h.file.Close()
+		_ = h.file.Close()
 	}
 	w.mu.Unlock()
 
-	os.RemoveAll(filepath.Join(dir, "metadata"))
+	_ = os.RemoveAll(filepath.Join(dir, "metadata"))
 
 	w.WriteEvent(audit.EventVerify, audit.Record{ID: "r2", StartTime: now, Allowed: true}, json.RawMessage(`{}`))
 
@@ -180,7 +181,7 @@ func TestWriter_SelfHeal_StaleFileHandle(t *testing.T) {
 
 func TestWriter_DateRotation(t *testing.T) {
 	w, dir := newTestWriter(t)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	yesterday := time.Now().AddDate(0, 0, -1).UTC()
 	w.WriteEvent(audit.EventVerify, audit.Record{ID: "y1", StartTime: yesterday, Allowed: true}, json.RawMessage(`{}`))
@@ -202,25 +203,106 @@ func TestWriter_DateRotation(t *testing.T) {
 	}
 }
 
+func TestWriter_Start_ContextCancel(t *testing.T) {
+	w, _ := newTestWriter(t)
+	defer func() { _ = w.Close() }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		w.Start(ctx)
+		close(done)
+	}()
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Start did not return after context cancel")
+	}
+}
+
+func TestCleanDateDirs_SkipsNonDirs(t *testing.T) {
+	w, dir := newTestWriter(t)
+	defer func() { _ = w.Close() }()
+
+	metaDir := filepath.Join(dir, "metadata")
+	_ = os.MkdirAll(metaDir, 0700)
+	// Write a plain file (not a directory) — cleanDateDirs should skip it without panic.
+	_ = os.WriteFile(filepath.Join(metaDir, "not-a-dir.txt"), []byte("x"), 0600)
+
+	cutoff := time.Now().AddDate(0, 0, 1) // future cutoff — would delete everything if it ran
+	w.cleanDateDirs(metaDir, cutoff)
+
+	if _, err := os.Stat(filepath.Join(metaDir, "not-a-dir.txt")); os.IsNotExist(err) {
+		t.Error("plain file should not have been removed by cleanDateDirs")
+	}
+}
+
+func TestNewWriter_DefaultDir(t *testing.T) {
+	dir := t.TempDir()
+	w, err := NewWriter(Config{Dir: dir})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if w.cfg.MaxAgeDays != 30 {
+		t.Errorf("expected MaxAgeDays default 30, got %d", w.cfg.MaxAgeDays)
+	}
+	_ = w.Close()
+}
+
+func TestNewWriter_Error(t *testing.T) {
+	// Use a file as Dir so MkdirAll fails.
+	f, err := os.CreateTemp(t.TempDir(), "notadir")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+	_, err = NewWriter(Config{Dir: f.Name()})
+	if err == nil {
+		t.Fatal("expected error when dir is a file")
+	}
+}
+
+func TestWritePayload_BadDir(t *testing.T) {
+	w, dir := newTestWriter(t)
+	defer func() { _ = w.Close() }()
+
+	// Replace the payloads dir with a file so writePayload's MkdirAll fails.
+	payloadsDir := filepath.Join(dir, "payloads")
+	_ = os.RemoveAll(payloadsDir)
+	f, err := os.Create(payloadsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+
+	now := time.Now().UTC()
+	// writePayload's MkdirAll fails — should log, not panic.
+	w.WriteEvent(audit.EventVerify,
+		audit.Record{ID: "x", StartTime: now, Allowed: true},
+		json.RawMessage(`{}`),
+	)
+}
+
 func TestWriter_Cleanup(t *testing.T) {
 	w, dir := newTestWriter(t)
 	w.cfg.MaxAgeDays = 1
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	oldDate := time.Now().AddDate(0, 0, -40).UTC().Format("2006-01-02")
 
 	oldMetaDir := filepath.Join(dir, "metadata", oldDate)
-	os.MkdirAll(oldMetaDir, 0700)
-	os.WriteFile(filepath.Join(oldMetaDir, "verify.jsonl"), []byte(`{"id":"old"}`+"\n"), 0600)
+	_ = os.MkdirAll(oldMetaDir, 0700)
+	_ = os.WriteFile(filepath.Join(oldMetaDir, "verify.jsonl"), []byte(`{"id":"old"}`+"\n"), 0600)
 
 	oldPayloadDir := filepath.Join(dir, "payloads", oldDate)
-	os.MkdirAll(filepath.Join(oldPayloadDir, "verify"), 0700)
-	os.WriteFile(filepath.Join(oldPayloadDir, "verify", "old.json"), []byte(`{}`), 0600)
+	_ = os.MkdirAll(filepath.Join(oldPayloadDir, "verify"), 0700)
+	_ = os.WriteFile(filepath.Join(oldPayloadDir, "verify", "old.json"), []byte(`{}`), 0600)
 
 	todayDate := time.Now().UTC().Format("2006-01-02")
 	recentMetaDir := filepath.Join(dir, "metadata", todayDate)
-	os.MkdirAll(recentMetaDir, 0700)
-	os.WriteFile(filepath.Join(recentMetaDir, "verify.jsonl"), []byte(`{"id":"recent"}`+"\n"), 0600)
+	_ = os.MkdirAll(recentMetaDir, 0700)
+	_ = os.WriteFile(filepath.Join(recentMetaDir, "verify.jsonl"), []byte(`{"id":"recent"}`+"\n"), 0600)
 
 	w.runCleanup()
 

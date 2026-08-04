@@ -243,3 +243,21 @@ func TestUnmarshalGitopsViaTaskPackage(t *testing.T) {
 		t.Errorf("taskId: expected t1, got %q", got)
 	}
 }
+
+func TestDelegateID(t *testing.T) {
+	if got := (VerifyRequest{TaskPackage: &TaskPackage{DelegateID: "del-1"}}).DelegateID(); got != "del-1" {
+		t.Errorf("DelegateID = %q, want del-1", got)
+	}
+	if got := (VerifyRequest{}).DelegateID(); got != "" {
+		t.Errorf("DelegateID = %q, want empty", got)
+	}
+}
+
+func TestDelegateInstanceID(t *testing.T) {
+	if got := (VerifyRequest{TaskPackage: &TaskPackage{DelegateInstanceID: "inst-1"}}).DelegateInstanceID(); got != "inst-1" {
+		t.Errorf("DelegateInstanceID = %q, want inst-1", got)
+	}
+	if got := (VerifyRequest{}).DelegateInstanceID(); got != "" {
+		t.Errorf("DelegateInstanceID = %q, want empty", got)
+	}
+}

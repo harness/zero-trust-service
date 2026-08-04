@@ -11,6 +11,10 @@ import (
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit"
 )
 
+// Reader scans the on-disk audit layout produced by Writer:
+//
+//	<dir>/metadata/<date>/<kind>.jsonl   metadata lines
+//	<dir>/payloads/<date>/<kind>/<id>.json   raw payloads
 type Reader struct {
 	dir string
 }
@@ -119,7 +123,7 @@ func scanVerifyFile(path string, req ListRequest) ([]audit.Record, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var matched []audit.Record
 	total := 0
@@ -151,7 +155,7 @@ func scanOutputFile(path string, req ListRequest) ([]audit.OutputRecord, int, er
 	if err != nil {
 		return nil, 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var matched []audit.OutputRecord
 	total := 0

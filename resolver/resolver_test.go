@@ -52,7 +52,7 @@ func mustResolve(t *testing.T, store *mockTemplateStore, py string) *ResolvedPip
 func digStage(t *testing.T, y string, idx int) map[string]any {
 	t.Helper()
 	var m map[string]any
-	yaml.Unmarshal([]byte(y), &m)
+	_ = yaml.Unmarshal([]byte(y), &m)
 	p, _ := toMap(m["pipeline"])
 	ss, _ := toSlice(p["stages"])
 	sw, _ := toMap(ss[idx])
@@ -305,4 +305,189 @@ pipeline:
 	if cd["type"] != "Deployment" {
 		t.Errorf("want Deployment, got %v", cd["type"])
 	}
+}
+
+func TestResolvePipeline_InvalidYAML(t *testing.T) {
+	_, err := New(newMockStore(), nil).ResolvePipeline(context.Background(), "a", "o", "p", "pipeline: [unclosed")
+	if err == nil {
+		t.Fatal("expected error for invalid pipeline yaml")
+	}
+}
+
+func TestResolvePipeline_StepTemplateNotFound(t *testing.T) {
+	// Store is empty → GetTemplate returns ErrTemplateNotFound.
+	_, err := New(newMockStore(), nil).ResolvePipeline(context.Background(), "a", "o", "p", `
+pipeline:
+  identifier: p
+  stages:
+    - stage:
+        identifier: s
+        type: CI
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: h
+                  template:
+                    templateRef: missingTpl
+                    versionLabel: v1`)
+	if err == nil {
+		t.Fatal("expected error for missing step template")
+	}
+}
+
+func TestResolvePipeline_PipelineTemplateNotFound(t *testing.T) {
+	_, err := New(newMockStore(), nil).ResolvePipeline(context.Background(), "a", "o", "p", `
+pipeline:
+  template:
+    templateRef: missingPipeline
+    versionLabel: v1`)
+	if err == nil {
+		t.Fatal("expected error for missing pipeline template")
+	}
+}
+
+func TestResolvePipeline_BadTemplateSpec(t *testing.T) {
+	s := newMockStore()
+	// Template YAML whose template node has no spec → ExtractTemplateSpec errors.
+	s.add("badTpl", "v1", "template:\n  identifier: badTpl\n  type: Step\n")
+	_, err := New(s, nil).ResolvePipeline(context.Background(), "a", "o", "p", `
+pipeline:
+  identifier: p
+  stages:
+    - stage:
+        identifier: s
+        type: CI
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: h
+                  template:
+                    templateRef: badTpl
+                    versionLabel: v1`)
+	if err == nil {
+		t.Fatal("expected error for template with no spec")
+	}
+}
+
+type fakeLoader struct {
+	data []byte
+	err  error
+}
+
+func (f fakeLoader) Find(_ context.Context, _, _, _ string) ([]byte, error) {
+	return f.data, f.err
+}
+
+func TestLoadAndResolvePipeline_NilLoader(t *testing.T) {
+	_, err := New(newMockStore(), nil).LoadAndResolvePipeline(context.Background(), "a", "o", "p", "puid", FileRef{})
+	if err != ErrNoLoader {
+		t.Fatalf("expected ErrNoLoader, got %v", err)
+	}
+}
+
+func TestLoadAndResolvePipeline_LoaderError(t *testing.T) {
+	r := New(newMockStore(), fakeLoader{err: fmt.Errorf("boom")})
+	_, err := r.LoadAndResolvePipeline(context.Background(), "a", "o", "p", "puid",
+		FileRef{Repo: "repo", Path: "p.yaml", Ref: "main"})
+	if err == nil {
+		t.Fatal("expected error from loader")
+	}
+}
+
+func TestLoadAndResolvePipeline_Success(t *testing.T) {
+	r := New(newMockStore(), fakeLoader{data: []byte("pipeline:\n  identifier: p\n")})
+	res, err := r.LoadAndResolvePipeline(context.Background(), "a", "o", "p", "puid",
+		FileRef{Repo: "repo", Path: "p.yaml", Ref: "main"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res == nil || res.ResolvedYAML == "" {
+		t.Fatal("expected resolved pipeline")
+	}
+}
+
+func TestNodeToGoValue_Edges(t *testing.T) {
+	// DocumentNode
+	doc := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "hello"},
+	}}
+	if v := nodeToGoValue(doc); v != "hello" {
+		t.Errorf("DocumentNode = %v, want hello", v)
+	}
+
+	// Empty DocumentNode
+	emptyDoc := &yaml.Node{Kind: yaml.DocumentNode}
+	if v := nodeToGoValue(emptyDoc); v != nil {
+		t.Errorf("empty DocumentNode = %v, want nil", v)
+	}
+
+	// AliasNode
+	target := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "aliased"}
+	alias := &yaml.Node{Kind: yaml.AliasNode, Alias: target}
+	if v := nodeToGoValue(alias); v != "aliased" {
+		t.Errorf("AliasNode = %v, want aliased", v)
+	}
+
+	// nil
+	if v := nodeToGoValue(nil); v != nil {
+		t.Errorf("nil node = %v, want nil", v)
+	}
+}
+
+func TestUnmarshalYAMLNode_EmptyDoc(t *testing.T) {
+	// Empty YAML produces an empty document node
+	n, err := unmarshalYAMLNode("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n == nil {
+		t.Fatal("expected non-nil node")
+	}
+}
+
+func TestMarshalYAML_DocumentNode(t *testing.T) {
+	// Pass a DocumentNode directly — should not double-wrap
+	inner := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "x"}
+	doc := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{inner}}
+	out, err := marshalYAML(doc)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "x") {
+		t.Errorf("expected 'x' in output, got %s", out)
+	}
+}
+
+func TestNodeGet_NilAndNonMapping(t *testing.T) {
+	if nodeGet(nil, "k") != nil {
+		t.Error("expected nil for nil node")
+	}
+	seq := &yaml.Node{Kind: yaml.SequenceNode}
+	if nodeGet(seq, "k") != nil {
+		t.Error("expected nil for non-mapping node")
+	}
+}
+
+func TestNodeKeys_NilAndNonMapping(t *testing.T) {
+	if nodeKeys(nil) != nil {
+		t.Error("expected nil for nil node")
+	}
+	seq := &yaml.Node{Kind: yaml.SequenceNode}
+	if nodeKeys(seq) != nil {
+		t.Error("expected nil for non-mapping node")
+	}
+}
+
+func TestNodeDeepClone_Nil(t *testing.T) {
+	if nodeDeepClone(nil) != nil {
+		t.Error("expected nil for nil node")
+	}
+}
+
+func TestNodeSet_NilAndNonMapping(t *testing.T) {
+	// Should not panic
+	nodeSet(nil, "k", &yaml.Node{})
+	nodeSet(&yaml.Node{Kind: yaml.SequenceNode}, "k", &yaml.Node{})
 }

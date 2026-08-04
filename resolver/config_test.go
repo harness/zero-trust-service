@@ -1,7 +1,6 @@
 package resolver
 
 import (
-	"os"
 	"testing"
 )
 
@@ -61,13 +60,12 @@ func TestResolverConfig_QualifyRepo(t *testing.T) {
 
 func TestSCMProviderConfig_ResolveToken(t *testing.T) {
 	tests := []struct {
-		name       string
-		token      string
-		envKey     string
-		envValue   string
-		want       string
-		setupEnv   bool
-		cleanupEnv bool
+		name     string
+		token    string
+		envKey   string
+		envValue string
+		want     string
+		setupEnv bool
 	}{
 		{
 			name:  "literal token",
@@ -75,22 +73,20 @@ func TestSCMProviderConfig_ResolveToken(t *testing.T) {
 			want:  "ghp_literal_token",
 		},
 		{
-			name:       "env var with dollar syntax",
-			token:      "$TEST_TOKEN",
-			envKey:     "TEST_TOKEN",
-			envValue:   "test_value_123",
-			want:       "test_value_123",
-			setupEnv:   true,
-			cleanupEnv: true,
+			name:     "env var with dollar syntax",
+			token:    "$TEST_TOKEN",
+			envKey:   "TEST_TOKEN",
+			envValue: "test_value_123",
+			want:     "test_value_123",
+			setupEnv: true,
 		},
 		{
-			name:       "env var with brace syntax",
-			token:      "${TEST_TOKEN_BRACE}",
-			envKey:     "TEST_TOKEN_BRACE",
-			envValue:   "brace_value_456",
-			want:       "brace_value_456",
-			setupEnv:   true,
-			cleanupEnv: true,
+			name:     "env var with brace syntax",
+			token:    "${TEST_TOKEN_BRACE}",
+			envKey:   "TEST_TOKEN_BRACE",
+			envValue: "brace_value_456",
+			want:     "brace_value_456",
+			setupEnv: true,
 		},
 		{
 			name:  "env var not set returns empty",
@@ -107,10 +103,7 @@ func TestSCMProviderConfig_ResolveToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.setupEnv {
-				os.Setenv(tt.envKey, tt.envValue)
-			}
-			if tt.cleanupEnv {
-				defer os.Unsetenv(tt.envKey)
+				t.Setenv(tt.envKey, tt.envValue)
 			}
 
 			cfg := SCMProviderConfig{Token: tt.token}
@@ -123,8 +116,7 @@ func TestSCMProviderConfig_ResolveToken(t *testing.T) {
 }
 
 func TestResolveEnvVar(t *testing.T) {
-	os.Setenv("TEST_VAR", "test_value")
-	defer os.Unsetenv("TEST_VAR")
+	t.Setenv("TEST_VAR", "test_value")
 
 	tests := []struct {
 		name string

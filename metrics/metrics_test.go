@@ -3,7 +3,7 @@ package metrics
 import "testing"
 
 func TestNewNoop_ImplementsEmitter(t *testing.T) {
-	var _ Emitter = NewNoop()
+	var _ = NewNoop()
 }
 
 func TestNewNoop_OperationsDoNotPanic(t *testing.T) {

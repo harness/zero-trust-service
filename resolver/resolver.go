@@ -161,10 +161,11 @@ func (r *Resolver) resolveEntityTemplate(ctx context.Context, accountID, orgID, 
 	if err != nil {
 		return nil, nil, err
 	}
-	if ref.Scope == ScopeProject {
+	switch ref.Scope {
+	case ScopeProject:
 		ref.OrgIdentifier = orgID
 		ref.ProjectIdentifier = projectID
-	} else if ref.Scope == ScopeOrg {
+	case ScopeOrg:
 		ref.OrgIdentifier = orgID
 	}
 
@@ -215,10 +216,11 @@ func (r *Resolver) resolveTemplateNode(ctx context.Context, accountID, orgID, pr
 	if err != nil {
 		return nil, nil, err
 	}
-	if ref.Scope == ScopeProject {
+	switch ref.Scope {
+	case ScopeProject:
 		ref.OrgIdentifier = orgID
 		ref.ProjectIdentifier = projectID
-	} else if ref.Scope == ScopeOrg {
+	case ScopeOrg:
 		ref.OrgIdentifier = orgID
 	}
 

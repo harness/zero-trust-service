@@ -83,7 +83,9 @@ func (w *Writer) writeMetadata(kind, date string, record audit.AuditRecord) erro
 	}
 
 	if _, err = h.file.Write(line); err != nil {
-		h.file.Close()
+		if closeErr := h.file.Close(); closeErr != nil {
+			log.Printf("audit: failed to close %s metadata file: %v", key, closeErr)
+		}
 		delete(w.files, key)
 		h, reopenErr := w.openMetaHandle(kind, date)
 		if reopenErr != nil {

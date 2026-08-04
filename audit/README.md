@@ -9,7 +9,7 @@ The package itself only defines the `Writer` interface and the record types. Act
 ```
 audit/
 ├── audit.go       Writer interface, AuditRecord interface, Record, OutputRecord
-└── file/          File-based audit implementation (see file/README.md)
+└── file/          File-based audit writer (see file/README.md)
 ```
 
 ## How to Use

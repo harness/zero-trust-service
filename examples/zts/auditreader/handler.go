@@ -1,13 +1,15 @@
-package file
+package auditreader
 
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit"
+	auditfile "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit/file"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -17,10 +19,10 @@ const (
 )
 
 type Handler struct {
-	reader *Reader
+	reader *auditfile.Reader
 }
 
-func NewHandler(reader *Reader) *Handler {
+func NewHandler(reader *auditfile.Reader) *Handler {
 	return &Handler{reader: reader}
 }
 
@@ -80,7 +82,7 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 		kind = audit.EventVerify
 	}
 
-	req := ListRequest{
+	req := auditfile.ListRequest{
 		Kind:      kind,
 		FromTime:  time.UnixMilli(fromMs).UTC(),
 		ToTime:    time.UnixMilli(toMs).UTC(),
@@ -109,7 +111,9 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("[auditreader] failed to encode response: %v", err)
+	}
 }
 
 func (h *Handler) handleGetPayload(w http.ResponseWriter, r *http.Request) {
@@ -126,5 +130,7 @@ func (h *Handler) handleGetPayload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(payload)
+	if _, err := w.Write(payload); err != nil {
+		log.Printf("[auditreader] failed to write payload: %v", err)
+	}
 }

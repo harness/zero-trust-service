@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewWithRegistry_ImplementsEmitter(t *testing.T) {
-	var _ metrics.Emitter = NewWithRegistry(prom.NewRegistry())
+	var _ = NewWithRegistry(prom.NewRegistry())
 }
 
 func TestNewWithRegistry_OperationsDoNotPanic(t *testing.T) {

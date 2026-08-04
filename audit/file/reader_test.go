@@ -39,183 +39,50 @@ func setupReaderTest(t *testing.T) (string, *Reader) {
 		w.WriteEvent(audit.EventOutput, rec, json.RawMessage(`{"taskOutput":"data"}`))
 	}
 
-	w.Close()
+	_ = w.Close()
 
 	reader := NewReader(dir)
 	return dir, reader
 }
 
-func TestReader_List_AllVerifyRecords(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
+func TestReader_List_Filters(t *testing.T) {
 	now := time.Date(2026, 2, 17, 12, 0, 0, 0, time.UTC)
-	resp, err := reader.List(ListRequest{
-		Kind:     audit.EventVerify,
-		FromTime: now.Add(-1 * time.Hour),
-		ToTime:   now.Add(1 * time.Hour),
-		Limit:    100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Total != 3 {
-		t.Errorf("expected 3 total, got %d", resp.Total)
-	}
-	if resp.Kind != audit.EventVerify {
-		t.Errorf("expected kind verify, got %s", resp.Kind)
-	}
-}
+	from := now.Add(-1 * time.Hour)
+	to := now.Add(1 * time.Hour)
+	denied, allowed := false, true
 
-func TestReader_List_AllOutputRecords(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
-	now := time.Date(2026, 2, 17, 12, 0, 0, 0, time.UTC)
-	resp, err := reader.List(ListRequest{
-		Kind:     audit.EventOutput,
-		FromTime: now.Add(-1 * time.Hour),
-		ToTime:   now.Add(1 * time.Hour),
-		Limit:    100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Total != 2 {
-		t.Errorf("expected 2 output total, got %d", resp.Total)
-	}
-	if resp.Kind != audit.EventOutput {
-		t.Errorf("expected kind output, got %s", resp.Kind)
-	}
-}
-
-func TestReader_List_DefaultKindIsVerify(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
-	now := time.Date(2026, 2, 17, 12, 0, 0, 0, time.UTC)
-	resp, err := reader.List(ListRequest{
-		FromTime: now.Add(-1 * time.Hour),
-		ToTime:   now.Add(1 * time.Hour),
-		Limit:    100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Kind != audit.EventVerify {
-		t.Errorf("expected default kind verify, got %s", resp.Kind)
-	}
-	if resp.Total != 3 {
-		t.Errorf("expected 3 total, got %d", resp.Total)
-	}
-}
-
-func TestReader_List_FilterByAccountID(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
-	now := time.Date(2026, 2, 17, 12, 0, 0, 0, time.UTC)
-	resp, err := reader.List(ListRequest{
-		Kind:      audit.EventVerify,
-		FromTime:  now.Add(-1 * time.Hour),
-		ToTime:    now.Add(1 * time.Hour),
-		AccountID: "acc1",
-		Limit:     100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Total != 2 {
-		t.Errorf("expected 2 for acc1, got %d", resp.Total)
-	}
-}
-
-func TestReader_List_FilterOutputByAccountID(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
-	now := time.Date(2026, 2, 17, 12, 0, 0, 0, time.UTC)
-	resp, err := reader.List(ListRequest{
-		Kind:      audit.EventOutput,
-		FromTime:  now.Add(-1 * time.Hour),
-		ToTime:    now.Add(1 * time.Hour),
-		AccountID: "acc1",
-		Limit:     100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Total != 1 {
-		t.Errorf("expected 1 output for acc1, got %d", resp.Total)
-	}
-}
-
-func TestReader_List_FilterByTaskType(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
-	now := time.Date(2026, 2, 17, 12, 0, 0, 0, time.UTC)
-	resp, err := reader.List(ListRequest{
-		Kind:     audit.EventVerify,
-		FromTime: now.Add(-1 * time.Hour),
-		ToTime:   now.Add(1 * time.Hour),
-		TaskType: "HTTP_TASK",
-		Limit:    100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Total != 1 {
-		t.Errorf("expected 1 for HTTP_TASK, got %d", resp.Total)
-	}
-}
-
-func TestReader_List_FilterByAllowed(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
-	now := time.Date(2026, 2, 17, 12, 0, 0, 0, time.UTC)
-
-	denied := false
-	resp, err := reader.List(ListRequest{
-		Kind:     audit.EventVerify,
-		FromTime: now.Add(-1 * time.Hour),
-		ToTime:   now.Add(1 * time.Hour),
-		Allowed:  &denied,
-		Limit:    100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Total != 1 {
-		t.Errorf("expected 1 denied, got %d", resp.Total)
+	tests := []struct {
+		name      string
+		req       ListRequest
+		wantTotal int
+		wantKind  string
+	}{
+		{"all verify records", ListRequest{Kind: audit.EventVerify, FromTime: from, ToTime: to, Limit: 100}, 3, audit.EventVerify},
+		{"all output records", ListRequest{Kind: audit.EventOutput, FromTime: from, ToTime: to, Limit: 100}, 2, audit.EventOutput},
+		{"default kind is verify", ListRequest{FromTime: from, ToTime: to, Limit: 100}, 3, audit.EventVerify},
+		{"filter verify by account", ListRequest{Kind: audit.EventVerify, FromTime: from, ToTime: to, AccountID: "acc1", Limit: 100}, 2, audit.EventVerify},
+		{"filter output by account", ListRequest{Kind: audit.EventOutput, FromTime: from, ToTime: to, AccountID: "acc1", Limit: 100}, 1, audit.EventOutput},
+		{"filter by task type", ListRequest{Kind: audit.EventVerify, FromTime: from, ToTime: to, TaskType: "HTTP_TASK", Limit: 100}, 1, audit.EventVerify},
+		{"filter by task id", ListRequest{Kind: audit.EventVerify, FromTime: from, ToTime: to, TaskID: "t2", Limit: 100}, 1, audit.EventVerify},
+		{"filter by denied", ListRequest{Kind: audit.EventVerify, FromTime: from, ToTime: to, Allowed: &denied, Limit: 100}, 1, audit.EventVerify},
+		{"filter by allowed", ListRequest{Kind: audit.EventVerify, FromTime: from, ToTime: to, Allowed: &allowed, Limit: 100}, 2, audit.EventVerify},
+		{"out of range timestamp", ListRequest{Kind: audit.EventVerify, FromTime: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC), ToTime: time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC), Limit: 100}, 0, audit.EventVerify},
 	}
 
-	allowed := true
-	resp2, err := reader.List(ListRequest{
-		Kind:     audit.EventVerify,
-		FromTime: now.Add(-1 * time.Hour),
-		ToTime:   now.Add(1 * time.Hour),
-		Allowed:  &allowed,
-		Limit:    100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp2.Total != 2 {
-		t.Errorf("expected 2 allowed, got %d", resp2.Total)
-	}
-}
-
-func TestReader_List_FilterByTaskID(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
-	now := time.Date(2026, 2, 17, 12, 0, 0, 0, time.UTC)
-	resp, err := reader.List(ListRequest{
-		Kind:     audit.EventVerify,
-		FromTime: now.Add(-1 * time.Hour),
-		ToTime:   now.Add(1 * time.Hour),
-		TaskID:   "t2",
-		Limit:    100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Total != 1 {
-		t.Errorf("expected 1 for t2, got %d", resp.Total)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, reader := setupReaderTest(t)
+			resp, err := reader.List(tc.req)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if resp.Total != tc.wantTotal {
+				t.Errorf("expected total %d, got %d", tc.wantTotal, resp.Total)
+			}
+			if resp.Kind != tc.wantKind {
+				t.Errorf("expected kind %s, got %s", tc.wantKind, resp.Kind)
+			}
+		})
 	}
 }
 
@@ -255,23 +122,6 @@ func TestReader_List_Pagination(t *testing.T) {
 	audits2 := resp2.Audits.([]audit.Record)
 	if len(audits2) != 1 {
 		t.Errorf("expected 1 audit on page 2, got %d", len(audits2))
-	}
-}
-
-func TestReader_List_OutOfRangeTimestamp(t *testing.T) {
-	_, reader := setupReaderTest(t)
-
-	resp, err := reader.List(ListRequest{
-		Kind:     audit.EventVerify,
-		FromTime: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
-		ToTime:   time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC),
-		Limit:    100,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Total != 0 {
-		t.Errorf("expected 0, got %d", resp.Total)
 	}
 }
 
@@ -390,7 +240,7 @@ func TestScanVerifyFile_MissingFile(t *testing.T) {
 func TestScanVerifyFile_InvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.jsonl")
-	os.WriteFile(path, []byte("not-json\n{\"id\":\"ok\",\"startTime\":\"1970-01-01T00:01:40Z\",\"allowed\":true}\n"), 0600)
+	_ = os.WriteFile(path, []byte("not-json\n{\"id\":\"ok\",\"startTime\":\"1970-01-01T00:01:40Z\",\"allowed\":true}\n"), 0600)
 
 	records, total, err := scanVerifyFile(path, ListRequest{FromTime: time.Unix(0, 0), ToTime: time.Unix(200, 0), Limit: 100})
 	if err != nil {

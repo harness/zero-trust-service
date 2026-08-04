@@ -161,8 +161,3 @@ func TestShellScript_SyntaxError(t *testing.T) {
 		t.Fatal("expected error for script with syntax error")
 	}
 }
-
-func jsonStr(s string) string {
-	b, _ := json.Marshal(s)
-	return string(b)
-}

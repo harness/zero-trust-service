@@ -37,7 +37,9 @@ func (s *Server) handleOutput(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[output] failed to encode response: %v", err)
+	}
 }
 
 // DefaultOutputHandler is a no-op that returns an empty OutputResponse.

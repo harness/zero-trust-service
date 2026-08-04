@@ -70,11 +70,11 @@ func validate(w http.ResponseWriter, r *http.Request) {
 			Allowed: false,
 			Reason:  fmt.Sprintf("Shell scripts are blocked in org '%s' by policy", org),
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 		return
 	}
 
-	json.NewEncoder(w).Encode(validateResponse{Allowed: true})
+	_ = json.NewEncoder(w).Encode(validateResponse{Allowed: true})
 }
 
 func main() {

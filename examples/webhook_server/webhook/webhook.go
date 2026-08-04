@@ -114,7 +114,7 @@ func (w *webhook) Handle(ctx context.Context, request types.VerifyRequest) error
 		}
 		return fmt.Errorf("webhook %q: call failed: %w", w.name, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if !w.isAllowedStatus(resp.StatusCode) {
 		if w.failOpen {
