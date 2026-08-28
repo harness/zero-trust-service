@@ -2,6 +2,7 @@
 
 ZTS is a **customer-controlled authorization layer** that sits between the Harness Platform and the Delegate. Before a Delegate executes any task (deploy, script, pipeline step, etc.), it sends the task to ZTS for approval. ZTS evaluates the task against a chain of validators and returns an allow or deny decision. This gives platform operators fine-grained, policy-driven control over what the Delegate is permitted to do — independent of the Harness control plane.
 
+
 ```
 Harness Manager ──► Delegate ──► ZTS /api/verify ──► allowed / denied
                                       │
