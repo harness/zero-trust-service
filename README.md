@@ -14,6 +14,7 @@ Harness Manager ──► Delegate ──► ZTS /api/verify ──► allowed /
 
 Everything is pluggable — validators, audit backends, metrics collectors, and the pipeline resolver can all be swapped or extended without modifying the core library.
 
+
 ## Folder Structure
 
 ```
