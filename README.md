@@ -157,3 +157,11 @@ Admin endpoints (metrics, healthz, audit queries) are hosted separately by the a
 For the full deployment guide (Docker, K8s, delegate configuration), see [`examples/zts/README.md`](examples/zts/README.md).
 
 For details on each package, see the README inside that directory.
+
+## Contributing
+
+Contributions are welcome. Before your contribution can be accepted, you must sign the Harness Contributor License Agreement (CLA), which is handled automatically via GitHub the first time you open a pull request.
+
+## License
+
+Zero-Trust Service is licensed under the Apache License, Version 2.0. See [LICENSE.md](./LICENSE.md) for the full license text and [NOTICE.md](./NOTICE.md) for copyright and attribution notices.
