@@ -100,7 +100,7 @@ handler := verifier.ToHandler(chain)
 
 ### Writing a Custom Verifier
 
-Implement `verifier.Interface`:
+Implement the `verifier.Interface` or create one from a verify function:
 
 ```go
 v := verifier.From(func(ctx context.Context, req types.VerifyRequest) error {
