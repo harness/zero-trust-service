@@ -1,0 +1,31 @@
+# 2x2 matrix (a x b) whose exclude list removes EVERY combination. Harness
+# evaluates excludes upfront and skips the step gracefully (no instances run,
+# pipeline does not fail). "after" follows the skipped "build".
+pipeline:
+  identifier: case31
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: build
+                  type: ShellScript
+                  strategy:
+                    matrix:
+                      a: [x, y]
+                      b: [p, q]
+                      exclude:
+                        - a: x
+                          b: p
+                        - a: x
+                          b: q
+                        - a: y
+                          b: p
+                        - a: y
+                          b: q
+              - step:
+                  identifier: after
+                  type: ShellScript

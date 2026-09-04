@@ -1,0 +1,21 @@
+# "build" is a 2x2 matrix (region x tier) -> build_0_0/_0_1/_1_0/_1_1 (positional,
+# row-major); "after" joins on all four.
+pipeline:
+  identifier: case26
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: build
+                  type: ShellScript
+                  strategy:
+                    matrix:
+                      region: [us, eu]
+                      tier: [free, paid]
+              - step:
+                  identifier: after
+                  type: ShellScript

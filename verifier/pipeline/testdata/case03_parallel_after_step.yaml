@@ -1,0 +1,20 @@
+# p_a and p_b run in parallel after s1. Ancestor of each = {s1}. Join AND.
+pipeline:
+  identifier: case03
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: s1
+                  type: ShellScript
+              - parallel:
+                  - step:
+                      identifier: p_a
+                      type: ShellScript
+                  - step:
+                      identifier: p_b
+                      type: ShellScript

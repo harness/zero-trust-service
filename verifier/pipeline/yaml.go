@@ -16,9 +16,8 @@ package pipeline
 
 import "gopkg.in/yaml.v3"
 
-// ParsePipeline parses pipeline YAML into a *yaml.Node, returning the
-// root mapping node (unwrapping the DocumentNode wrapper).
-// Returns nil if the YAML is invalid or empty.
+// ParsePipeline parses pipeline YAML and returns the root mapping node
+// (unwrapping the DocumentNode), or nil if the YAML is invalid or empty.
 func ParsePipeline(pipelineYAML string) *yaml.Node {
 	var doc yaml.Node
 	if err := yaml.Unmarshal([]byte(pipelineYAML), &doc); err != nil {
@@ -41,9 +40,8 @@ func FindNodeByFQN(root *yaml.Node, fqn string) *yaml.Node {
 	return walkToNode(root, segments, 0)
 }
 
-// GetParentNode returns the parent node for a given FQN by walking
-// all segments except the last one. Returns nil if the parent path
-// doesn't exist.
+// GetParentNode returns the parent node of an FQN (walking all segments
+// except the last), or nil if the parent path doesn't exist.
 func GetParentNode(root *yaml.Node, fqn string) *yaml.Node {
 	if root == nil || fqn == "" {
 		return nil
@@ -144,7 +142,6 @@ func walkToNode(node *yaml.Node, segments []string, idx int) *yaml.Node {
 			if item.Kind != yaml.MappingNode {
 				continue
 			}
-			// Check wrappers (step, stage, stepGroup)
 			for _, wrapper := range []string{"step", "stage", "stepGroup"} {
 				inner := nodeGet(item, wrapper)
 				if inner == nil {
@@ -160,7 +157,6 @@ func walkToNode(node *yaml.Node, segments []string, idx int) *yaml.Node {
 					return result
 				}
 			}
-			// Check direct identifier
 			if nodeGetScalar(item, "identifier") == seg {
 				return walkToNode(item, segments, idx+1)
 			}

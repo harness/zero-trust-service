@@ -19,6 +19,7 @@ import (
 
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/examples/webhook_server/webhook"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
+	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/examples/zts/ordering"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/account"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/pipeline"
 	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/taskdenylist"
@@ -44,8 +45,7 @@ func (r *Registry) Register(name string, f Factory) {
 	r.factories[name] = f
 }
 
-// Resolve creates a verifier by looking up the factory for the given name
-// and calling it with the provided config.
+// Resolve creates a verifier from the factory registered under name, using cfg.
 func (r *Registry) Resolve(name string, cfg any) (verifier.Interface, error) {
 	f, ok := r.factories[name]
 	if !ok {
@@ -62,6 +62,7 @@ func DefaultRegistry() *Registry {
 	RegisterTyped(reg, "shellscript", tasktype.NewShellScript)
 	RegisterTyped(reg, "image_allowlist", tasktype.NewImageAllowlist)
 	RegisterTyped(reg, "step_lookup", pipeline.NewStepLookup)
+	RegisterTyped(reg, "execution_ordering", ordering.New)
 	RegisterTyped(reg, "webhook", webhook.New)
 	return reg
 }

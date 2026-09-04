@@ -1,0 +1,18 @@
+# `when` is a runtime input ("<+input>"): surfaced (RuntimeInput=true) but never
+# enforced statically. Ancestor of s2 = {s1}. Join AND.
+pipeline:
+  identifier: case24
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: s1
+                  type: ShellScript
+              - step:
+                  identifier: s2
+                  type: ShellScript
+                  when: "<+input>"

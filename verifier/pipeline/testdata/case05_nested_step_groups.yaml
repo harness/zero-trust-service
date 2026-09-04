@@ -1,0 +1,26 @@
+# Nested step groups: a group's first step inherits the group's predecessor; a
+# later step waits on its prior sibling. g1a -> {pre}; g2a (nested) -> {g1a}.
+pipeline:
+  identifier: case05
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: pre
+                  type: ShellScript
+              - stepGroup:
+                  identifier: sg1
+                  steps:
+                    - step:
+                        identifier: g1a
+                        type: ShellScript
+                    - stepGroup:
+                        identifier: sg2
+                        steps:
+                          - step:
+                              identifier: g2a
+                              type: ShellScript

@@ -1,0 +1,26 @@
+# Nested strategies compose as a cartesian product, each suffixing at its own FQN
+# boundary: sg (parallelism 2) x g1 (repeat 2) -> sg_{0,1}.steps.g1_{0,1}.
+# "after" joins on all four.
+pipeline:
+  identifier: case28
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - stepGroup:
+                  identifier: sg
+                  strategy:
+                    parallelism: 2
+                  steps:
+                    - step:
+                        identifier: g1
+                        type: ShellScript
+                        strategy:
+                          repeat:
+                            times: 2
+              - step:
+                  identifier: after
+                  type: ShellScript

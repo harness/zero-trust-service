@@ -1,0 +1,19 @@
+# "deploy" uses runtime-input parallelism (instance count unknown): not
+# enumerable, so "after" gates on the logical FQN and the store reconciles instances.
+pipeline:
+  identifier: case29
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: deploy
+                  type: ShellScript
+                  strategy:
+                    parallelism: <+input>
+              - step:
+                  identifier: after
+                  type: ShellScript

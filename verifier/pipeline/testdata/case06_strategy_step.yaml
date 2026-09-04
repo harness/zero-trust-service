@@ -1,0 +1,20 @@
+# A step with a strategy fans out to deploy_0..deploy_N (HasStrategy=true; an
+# instance FQN normalizes back to logical "deploy"). Ancestor of deploy = {first}. Join AND.
+pipeline:
+  identifier: case06
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: first
+                  type: ShellScript
+              - step:
+                  identifier: deploy
+                  type: ShellScript
+                  strategy:
+                    repeat:
+                      times: 3

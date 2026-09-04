@@ -1,0 +1,23 @@
+# Two sequential stages st1 -> st2; st2's first step waits on st1's last.
+# Ancestor of st2.b1 = {st1.a1}. Join AND.
+pipeline:
+  identifier: case02
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: a1
+                  type: ShellScript
+    - stage:
+        identifier: st2
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: b1
+                  type: ShellScript

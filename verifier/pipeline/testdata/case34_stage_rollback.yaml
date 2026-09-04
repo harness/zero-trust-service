@@ -1,0 +1,25 @@
+# Stage with forward flow s1 -> s2 and rollbackSteps rb_deploy -> rb_cleanup.
+# The rollback entry rb_deploy OR-gates on forward leaves [s1, s2] (runs once any
+# forward step has run); no forward step depends on a rollback step.
+pipeline:
+  identifier: case34
+  stages:
+    - stage:
+        identifier: st1
+        type: Deployment
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: s1
+                  type: ShellScript
+              - step:
+                  identifier: s2
+                  type: ShellScript
+            rollbackSteps:
+              - step:
+                  identifier: rb_deploy
+                  type: ShellScript
+              - step:
+                  identifier: rb_cleanup
+                  type: ShellScript

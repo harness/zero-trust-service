@@ -1,0 +1,20 @@
+# Step `when`: stageStatus + JEXL condition, surfaced on the step; ordering
+# unchanged. Ancestor of s2 = {s1}. Join AND. Condition: Success + expression.
+pipeline:
+  identifier: case22
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: s1
+                  type: ShellScript
+              - step:
+                  identifier: s2
+                  type: ShellScript
+                  when:
+                    stageStatus: Success
+                    condition: "<+pipeline.variables.run> == \"true\""

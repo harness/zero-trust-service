@@ -80,7 +80,7 @@ func NewStepLookup(cfg StepLookupConfig) (verifier.Interface, error) {
 type StepStatus int
 
 const (
-	StepFound   StepStatus = iota
+	StepFound StepStatus = iota
 	StepMissing
 )
 

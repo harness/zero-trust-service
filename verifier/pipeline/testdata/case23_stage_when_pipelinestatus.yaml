@@ -1,0 +1,25 @@
+# Stage `when`: pipelineStatus, surfaced on the stage's entry step.
+# Ancestor of st2.b1 = {st1.a1}. Join AND. Condition Success, Level=stage.
+pipeline:
+  identifier: case23
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: a1
+                  type: ShellScript
+    - stage:
+        identifier: st2
+        type: Custom
+        when:
+          pipelineStatus: Success
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: b1
+                  type: ShellScript

@@ -1,0 +1,16 @@
+# Two sequential steps s1 -> s2. Ancestor of s2 = {s1}. Join AND.
+pipeline:
+  identifier: case01
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: s1
+                  type: ShellScript
+              - step:
+                  identifier: s2
+                  type: ShellScript

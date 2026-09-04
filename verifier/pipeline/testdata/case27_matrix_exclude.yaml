@@ -1,0 +1,24 @@
+# 2x2 matrix (a x b) excluding {a:x, b:p}: the engine drops the combination
+# WITHOUT renumbering, so survivors keep original indices _0_1, _1_0, _1_1.
+pipeline:
+  identifier: case27
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: build
+                  type: ShellScript
+                  strategy:
+                    matrix:
+                      a: [x, y]
+                      b: [p, q]
+                      exclude:
+                        - a: x
+                          b: p
+              - step:
+                  identifier: after
+                  type: ShellScript

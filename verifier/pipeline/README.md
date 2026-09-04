@@ -46,3 +46,19 @@ The `yaml.go` file provides general-purpose helpers for navigating Harness pipel
 | `GetNodeChild` | Get a child node by key |
 
 These are used by `step_lookup` but are also available for any validator that needs to inspect pipeline YAML structure.
+
+## Limitations
+
+### Pipeline-rollback steps run in a separate plan
+
+When a stage declares a `PipelineRollback` failure action, its rollback steps
+execute in a **separate, uncorrelated plan execution** that does not carry the
+main execution's `planExecutionId`. The ordering SDK therefore cannot correlate
+the rollback plan's run-state with the forward plan, so it **cannot statically
+gate** a rollback entry step: the verdict surfaces `SeparatePlanRollback` and the
+caller must fail open on it.
+
+Correlating the two plans would require the pipeline service to thread the main
+`planExecutionId` into the rollback execution (and the caller to resolve the
+pipeline YAML against that id). Until that exists, rollback-entry ordering is not
+enforced.

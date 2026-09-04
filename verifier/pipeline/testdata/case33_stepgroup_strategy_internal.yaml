@@ -1,0 +1,24 @@
+# Strategy-bearing step group "grp" (parallelism 3) with g1 -> g2: g1 and g2
+# share grp's fan-out (grp is their LCA), so grp_i.steps.g2 waits only on
+# grp_i.steps.g1 in the SAME branch, not all branches. Guards against
+# over-constraining a fanned step group into serializing its parallel copies.
+pipeline:
+  identifier: case33
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - stepGroup:
+                  identifier: grp
+                  strategy:
+                    parallelism: 3
+                  steps:
+                    - step:
+                        identifier: g1
+                        type: ShellScript
+                    - step:
+                        identifier: g2
+                        type: ShellScript

@@ -41,13 +41,16 @@ const (
 
 type resolvedPipelineKey struct{}
 
-// PipelineHolder is a mutable container stored in the context so that the
-// resolver can share the resolved pipeline with downstream verifiers.
+// PipelineHolder is a mutable context-stored container sharing the resolved
+// pipeline with downstream verifiers.
 type PipelineHolder struct {
 	pipeline *resolver.ResolvedPipeline
 }
 
 func (h *PipelineHolder) set(rp *resolver.ResolvedPipeline) { h.pipeline = rp }
+
+// Set stores the resolved pipeline, seeding the holder without the bundled Resolver.
+func (h *PipelineHolder) Set(rp *resolver.ResolvedPipeline) { h.set(rp) }
 
 // Get returns the resolved pipeline, or nil if resolution hasn't run / failed.
 func (h *PipelineHolder) Get() *resolver.ResolvedPipeline { return h.pipeline }
@@ -64,8 +67,7 @@ func PipelineHolderFrom(ctx context.Context) *PipelineHolder {
 	return h
 }
 
-// ResolvedPipelineFrom is a convenience that returns the resolved pipeline
-// directly from the context, or nil if unavailable.
+// ResolvedPipelineFrom returns the resolved pipeline from the context, or nil.
 func ResolvedPipelineFrom(ctx context.Context) *resolver.ResolvedPipeline {
 	h := PipelineHolderFrom(ctx)
 	if h == nil {
@@ -74,8 +76,8 @@ func ResolvedPipelineFrom(ctx context.Context) *resolver.ResolvedPipeline {
 	return h.Get()
 }
 
-// Resolver resolves pipeline YAML from SCM and stores the result in the
-// context via PipelineHolder before delegating to the next verifier.
+// Resolver resolves pipeline YAML from SCM into the context via PipelineHolder,
+// then delegates to the next verifier.
 type Resolver struct {
 	resolver  *resolver.Resolver
 	metrics   metrics.Emitter
@@ -89,8 +91,7 @@ func WithRepoQualifier(fn func(repo string) string) ResolverOption {
 	return func(r *Resolver) { r.qualifyFn = fn }
 }
 
-// WithOutputDir configures the resolver to write resolved pipeline YAML
-// to the given directory.
+// WithOutputDir writes resolved pipeline YAML to the given directory.
 func WithOutputDir(dir string) ResolverOption {
 	return func(r *Resolver) { r.outputDir = dir }
 }
@@ -103,8 +104,7 @@ func NewResolver(r *resolver.Resolver, m metrics.Emitter, opts ...ResolverOption
 	return res
 }
 
-// Wrap returns a new verifier that resolves the pipeline, stores it
-// in context, then calls next.Handle.
+// Wrap returns a verifier that resolves the pipeline into context, then calls next.
 func (rm *Resolver) Wrap(next Interface) Interface {
 	return From(func(ctx context.Context, request types.VerifyRequest) error {
 		ctx, holder := WithPipelineHolder(ctx)

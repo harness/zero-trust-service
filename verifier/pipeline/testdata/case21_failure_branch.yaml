@@ -1,0 +1,19 @@
+# `when: stageStatus == Failure` runs only on the failure branch, so the join is
+# OR (fires once any predecessor failed). Ancestor of onfail = {s1}. Status=Failure.
+pipeline:
+  identifier: case21
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: s1
+                  type: ShellScript
+              - step:
+                  identifier: onfail
+                  type: ShellScript
+                  when:
+                    stageStatus: Failure

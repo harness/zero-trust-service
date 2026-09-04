@@ -1,0 +1,20 @@
+# A step after a parallel block joins on every branch. Ancestor of s2 = {p_a, p_b}. Join AND.
+pipeline:
+  identifier: case04
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - parallel:
+                  - step:
+                      identifier: p_a
+                      type: ShellScript
+                  - step:
+                      identifier: p_b
+                      type: ShellScript
+              - step:
+                  identifier: s2
+                  type: ShellScript

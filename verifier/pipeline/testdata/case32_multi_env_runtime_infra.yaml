@@ -1,0 +1,37 @@
+# Multi-deploy where env e2's infrastructureDefinitions is "<+input>": one
+# non-enumerable dimension makes the whole stage non-enumerable, degrading to
+# logical-FQN gating rather than failing the build. From execution FWAGJbT8SrqazHUZyEhFFQ.
+pipeline:
+  identifier: zts_tc29_multi_env
+  stages:
+    - stage:
+        identifier: cd
+        type: Deployment
+        spec:
+          services:
+            values:
+              - serviceRef: s1
+              - serviceRef: s2
+          environments:
+            values:
+              - environmentRef: e2
+                deployToAll: true
+                infrastructureDefinitions: <+input>
+              - environmentRef: env1
+                infrastructureDefinitions:
+                  - identifier: cs
+                  - identifier: cds
+          execution:
+            steps:
+              - step:
+                  identifier: ShellScript_1
+                  type: ShellScript
+    - stage:
+        identifier: caa
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: ShellScript_1
+                  type: ShellScript

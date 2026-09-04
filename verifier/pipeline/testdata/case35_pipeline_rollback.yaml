@@ -1,0 +1,31 @@
+# Like case34 but with a PipelineRollback failure action: the rollback runs in a
+# separate, uncorrelated plan, so its steps are flagged SeparatePlanRollback and
+# left out of ordering (callers fail open); the forward flow is ordered normally.
+pipeline:
+  identifier: case35
+  stages:
+    - stage:
+        identifier: st1
+        type: Deployment
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: s1
+                  type: ShellScript
+              - step:
+                  identifier: s2
+                  type: ShellScript
+            rollbackSteps:
+              - step:
+                  identifier: rb_deploy
+                  type: ShellScript
+              - step:
+                  identifier: rb_cleanup
+                  type: ShellScript
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: PipelineRollback

@@ -1,0 +1,22 @@
+# "deploy" repeats 3x (deploy_0..deploy_2); "after" AND-joins on all three instances.
+pipeline:
+  identifier: case25
+  stages:
+    - stage:
+        identifier: st1
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: first
+                  type: ShellScript
+              - step:
+                  identifier: deploy
+                  type: ShellScript
+                  strategy:
+                    repeat:
+                      times: 3
+              - step:
+                  identifier: after
+                  type: ShellScript

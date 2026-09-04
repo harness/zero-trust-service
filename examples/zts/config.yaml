@@ -17,6 +17,32 @@ validators:
       config:
         log_found: ${ZTS_STEP_LOOKUP_LOG_FOUND:-true}
         log_missing: ${ZTS_STEP_LOOKUP_LOG_MISSING:-true}
+    # Reference execution-ordering verifier: for the step being verified, checks
+    # that its ancestors (per the resolved pipeline DAG) have already run in this
+    # plan execution. Needs the resolver enabled (it uses the resolved YAML) and
+    # keeps per-planExecutionId run-state in memory (see examples/zts/ordering).
+    - type: execution_ordering
+      enabled: ${ZTS_EXECUTION_ORDERING_ENABLED:-true}
+      config:
+        # true = enforce (deny the task when ancestors haven't run or a `when`
+        # guard fails); false = observe only (log the verdict, never block).
+        deny_on_missing: ${ZTS_EXECUTION_ORDERING_DENY_ON_MISSING:-true}
+        # Matrix instance-naming; must match the engine setting.
+        #   index -> _0_0, _0_1, ...  (positional axis indices)
+        #   value -> _us_free, ...    (axis values)
+        matrix_naming: ${ZTS_EXECUTION_ORDERING_MATRIX_NAMING:-index}
+        # Force a run/skip decision for a `when` expression, keyed by the exact
+        # expression string mapped to true (run) / false (skip). Effective only when
+        # a condition checker is wired in code (the reference wiring enforces ordering
+        # only). Single-quote keys so inner double quotes stay literal.
+        condition_overrides:
+          '<+pipeline.variables.name> == "override-me"': false
+          '<+pipeline.variables.env> == "prod"': true
+          '1==2': true
+          '1==1': true
+        # A `when` guard that cannot be evaluated always fails closed (the step is
+        # denied): there is no fail-open opt-out, matching the SDK's ancestor
+        # walk-up, which never steps over an unresolvable guard.
     # Deny any task type in denied_types (delegate + GitOps). Same pattern as require_account: one global policy.
     - type: task_denylist
       enabled: ${ZTS_TASK_DENYLIST_ENABLED:-false}

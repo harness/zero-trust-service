@@ -1,0 +1,38 @@
+# Deployment stage "cd" (no strategy block) fans out via services x environments
+# into 8 instances cd_<env>_<infra>_<service> (values sorted by key); "caa" joins
+# on all 8. Independent of the matrix-naming option.
+pipeline:
+  identifier: zts_tc29_multi_env
+  stages:
+    - stage:
+        identifier: cd
+        type: Deployment
+        spec:
+          services:
+            values:
+              - serviceRef: s1
+              - serviceRef: s2
+          environments:
+            values:
+              - environmentRef: e2
+                infrastructureDefinitions:
+                  - identifier: i1
+                  - identifier: i2
+              - environmentRef: env1
+                infrastructureDefinitions:
+                  - identifier: cs
+                  - identifier: cds
+          execution:
+            steps:
+              - step:
+                  identifier: ShellScript_1
+                  type: ShellScript
+    - stage:
+        identifier: caa
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  identifier: ShellScript_1
+                  type: ShellScript
