@@ -22,8 +22,8 @@ import (
 	"log"
 	"net/http"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/requestctx"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
+	"github.com/harness/zero-trust-service/requestctx"
+	"github.com/harness/zero-trust-service/types"
 )
 
 func (s *Server) handleOutput(w http.ResponseWriter, r *http.Request) {

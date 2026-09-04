@@ -17,7 +17,7 @@ package ordering
 import (
 	"testing"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/pipeline"
+	"github.com/harness/zero-trust-service/verifier/pipeline"
 )
 
 // tc29ResolvedYAML: multi-deploy "cd" stage (services s1,s2 x environments e2,env1,

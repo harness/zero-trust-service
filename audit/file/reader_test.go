@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit"
+	"github.com/harness/zero-trust-service/audit"
 )
 
 func setupReaderTest(t *testing.T) (string, *Reader) {

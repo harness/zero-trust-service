@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
+	"github.com/harness/zero-trust-service/metrics"
+	"github.com/harness/zero-trust-service/resolver"
+	"github.com/harness/zero-trust-service/types"
 )
 
 const (

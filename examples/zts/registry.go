@@ -17,13 +17,13 @@ package main
 import (
 	"fmt"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/examples/webhook_server/webhook"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/examples/zts/ordering"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/account"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/pipeline"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/taskdenylist"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/tasktype"
+	"github.com/harness/zero-trust-service/examples/webhook_server/webhook"
+	"github.com/harness/zero-trust-service/verifier"
+	"github.com/harness/zero-trust-service/examples/zts/ordering"
+	"github.com/harness/zero-trust-service/verifier/account"
+	"github.com/harness/zero-trust-service/verifier/pipeline"
+	"github.com/harness/zero-trust-service/verifier/taskdenylist"
+	"github.com/harness/zero-trust-service/verifier/tasktype"
 	"gopkg.in/yaml.v3"
 )
 

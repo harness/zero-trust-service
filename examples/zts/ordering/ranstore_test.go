@@ -17,7 +17,7 @@ package ordering
 import (
 	"testing"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/pipeline"
+	"github.com/harness/zero-trust-service/verifier/pipeline"
 )
 
 // orderingYAML: s1, then a parallel (p_a, p_b), then s2 joining on both.

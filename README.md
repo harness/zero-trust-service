@@ -80,7 +80,7 @@ At its simplest, you create a server with a verify handler:
 ```go
 package main
 
-import "git0.harness.io/…/zero-trust-service"
+import "github.com/harness/zero-trust-service"
 
 func main() {
     srv := zts.NewServer(

@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
+	"github.com/harness/zero-trust-service/types"
 )
 
 // VerifyMiddleware wraps a VerifyHandler to add cross-cutting behavior

@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit"
+	"github.com/harness/zero-trust-service/audit"
 )
 
 // Reader scans the on-disk audit layout produced by Writer:

@@ -17,7 +17,7 @@ package prometheus
 import (
 	"sync"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
+	"github.com/harness/zero-trust-service/metrics"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )

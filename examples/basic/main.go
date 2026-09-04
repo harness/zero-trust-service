@@ -22,9 +22,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	zts "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
+	zts "github.com/harness/zero-trust-service"
+	"github.com/harness/zero-trust-service/types"
+	"github.com/harness/zero-trust-service/verifier"
 )
 
 // This example shows how to create a ZTS server with hardcoded validators.

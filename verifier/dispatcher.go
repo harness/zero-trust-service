@@ -17,7 +17,7 @@ package verifier
 import (
 	"context"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
+	"github.com/harness/zero-trust-service/types"
 )
 
 // Dispatcher routes requests to the correct validators based on task_type.

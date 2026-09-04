@@ -24,8 +24,8 @@ import (
 	"testing"
 	"time"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit"
-	auditfile "git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit/file"
+	"github.com/harness/zero-trust-service/audit"
+	auditfile "github.com/harness/zero-trust-service/audit/file"
 	"github.com/go-chi/chi/v5"
 )
 

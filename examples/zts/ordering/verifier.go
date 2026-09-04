@@ -21,9 +21,9 @@ import (
 	"log"
 	"strings"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/pipeline"
+	"github.com/harness/zero-trust-service/types"
+	"github.com/harness/zero-trust-service/verifier"
+	"github.com/harness/zero-trust-service/verifier/pipeline"
 )
 
 // Config configures the reference execution-ordering verifier.

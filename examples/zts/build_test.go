@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"testing"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/examples/zts/config"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/metrics"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/account"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier/tasktype"
+	"github.com/harness/zero-trust-service/examples/zts/config"
+	"github.com/harness/zero-trust-service/metrics"
+	"github.com/harness/zero-trust-service/types"
+	"github.com/harness/zero-trust-service/verifier"
+	"github.com/harness/zero-trust-service/verifier/account"
+	"github.com/harness/zero-trust-service/verifier/tasktype"
 	"gopkg.in/yaml.v3"
 )
 

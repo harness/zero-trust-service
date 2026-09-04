@@ -1,4 +1,4 @@
-module git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service
+module github.com/harness/zero-trust-service
 
 go 1.25.7
 

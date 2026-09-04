@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/types"
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/verifier"
+	"github.com/harness/zero-trust-service/resolver"
+	"github.com/harness/zero-trust-service/types"
+	"github.com/harness/zero-trust-service/verifier"
 )
 
 // tc22WhenYAML: s1 -> s2, where s2 carries a `when` guard (stageStatus + JEXL condition).

@@ -20,7 +20,7 @@ import (
 	"path"
 	"strings"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
+	"github.com/harness/zero-trust-service/resolver"
 	"gopkg.in/yaml.v3"
 )
 

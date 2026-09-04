@@ -31,7 +31,7 @@ import (
 	"github.com/drone/go-scm/scm/driver/stash"
 	"github.com/drone/go-scm/scm/transport"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/resolver"
+	"github.com/harness/zero-trust-service/resolver"
 )
 
 // NewClient creates a go-scm client for the given SCM provider config.

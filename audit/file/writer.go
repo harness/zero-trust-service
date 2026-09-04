@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"git0.harness.io/l7B_kbSEQD2wjrM7PShm5w/PROD/Harness_Commons/zero-trust-service/audit"
+	"github.com/harness/zero-trust-service/audit"
 )
 
 // Writer persists audit records to local files.
