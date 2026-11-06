@@ -1,6 +1,10 @@
 module github.com/harness/zero-trust-service
 
+// keep language version low to ensure compatibility.
 go 1.25.7
+
+// update tooling for bug and security fixes
+toolchain go1.26.10
 
 require github.com/go-chi/chi/v5 v5.0.11
 
